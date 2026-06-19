@@ -115,12 +115,6 @@
     "deep_read_max_items": 5,
     "min_score": 0
   },
-  "llm": {
-    "enabled": false,
-    "provider": "openai",
-    "model": "gpt-4.1-mini",
-    "summary_top_k": 5
-  },
   "quality": {
     "strict_mode": true,
     "deep_read_dir": "doc/paper_brain/deep_reads",
@@ -176,7 +170,7 @@
         ],
         "url": "README.md",
         "is_project": true,
-        "abstract": "A clean Paper Brain project anchor. Edit config/paper_watch.json to describe your own research focus."
+        "abstract": "Project anchor for your research map. Edit config/paper_watch.json to describe your own focus."
       },
       {
         "title": "Example Seed Paper: Vision-Language Robots",

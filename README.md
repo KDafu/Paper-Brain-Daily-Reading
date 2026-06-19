@@ -4,7 +4,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Local First](https://img.shields.io/badge/local--first-research%20workspace-A8D9FF?style=flat-square)
-![No Keys Required](https://img.shields.io/badge/offline%20mode-no%20API%20key-9FD9BD?style=flat-square)
+![Offline Ready](https://img.shields.io/badge/offline-ready-9FD9BD?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
 
 Paper Brain is a local-first daily paper reader and research graph dashboard. It
@@ -18,18 +18,11 @@ knowledge graph.
 
 ## Why Paper Brain
 
-Research feeds are noisy. Paper Brain is designed for a slower, higher-quality
-workflow:
-
 - find about 10 relevant papers or projects per run;
 - prioritize top venues, strong labs, and code-backed work;
 - separate auto-imported metadata from verified deep reads;
 - keep figures, notes, graph links, favorites, and exports in one local place;
-- let an AI coding assistant help run the daily workflow without giving it your
-  private credentials.
-
-The clean repository ships with example seed nodes only. It does not include
-private papers, PDFs, figure crops, SQLite caches, API keys, or personal notes.
+- let an AI coding assistant help run the daily workflow.
 
 ## Features
 
@@ -74,9 +67,6 @@ python scripts/paper_brain/paper_brain.py --offline
 scripts/paper_brain/serve_paper_brain.sh 8765
 ```
 
-The offline command builds the dashboard from the example seed nodes in
-`config/paper_watch.json`.
-
 ## Daily Workflow
 
 Offline rebuild:
@@ -104,9 +94,7 @@ Generated files:
 ## Working With An AI Assistant
 
 After installing Paper Brain locally, you can ask an AI coding assistant such as
-Codex to operate the workflow inside the repository. The assistant does not need
-your GitHub password. API keys, if used, should stay in your shell environment or
-local secret manager.
+Codex to operate the workflow inside the repository.
 
 Useful prompts:
 
@@ -216,28 +204,6 @@ export SERPAPI_API_KEY="..."
 
 Direct Google Scholar scraping is not implemented.
 
-## LLM Summaries
-
-Set:
-
-```json
-"llm": {
-  "enabled": true,
-  "provider": "openai",
-  "model": "gpt-4.1-mini",
-  "summary_top_k": 5
-}
-```
-
-Then set your key outside the repository:
-
-```bash
-export OPENAI_API_KEY="..."
-```
-
-Keep API keys in your shell, `.env`, or system secret manager. Do not put keys
-inside `config/paper_watch.json`.
-
 ## Dashboard
 
 Open `doc/paper_brain/index.html` through the local server.
@@ -299,7 +265,7 @@ Then enable:
 
 If `pdftotext` is installed, text will be cached under `data/paper_brain/text/`.
 
-Figure preview extraction is disabled by default in the clean config. Enable it
+Figure preview extraction is disabled by default. Enable it
 under `graph.figure_preview` when you are ready to store generated figure crops.
 
 ## Roadmap
@@ -310,8 +276,3 @@ under `graph.figure_preview` when you are ready to store generated figure crops.
 - Optional vector search over full text.
 - Better figure extraction and manual figure verification.
 - Multi-profile support for different research projects.
-
-## Maintainers
-
-Release hygiene, update, and publishing notes live in
-[`docs/MAINTAINERS.md`](docs/MAINTAINERS.md).

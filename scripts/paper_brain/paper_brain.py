@@ -935,39 +935,6 @@ def local_pdf_papers(config: dict[str, Any]) -> list[Paper]:
     return papers
 
 
-def maybe_apply_openai_summaries(papers: list[Paper], config: dict[str, Any]) -> None:
-    llm_cfg = config.get("llm", {})
-    if not llm_cfg.get("enabled", False) or not os.environ.get("OPENAI_API_KEY"):
-        return
-    try:
-        from openai import OpenAI  # type: ignore
-    except Exception as exc:
-        print(f"[warn] OpenAI summaries skipped; package unavailable: {exc}", file=sys.stderr)
-        return
-
-    client = OpenAI()
-    model = llm_cfg.get("model", "gpt-4.1-mini")
-    top_k = int(llm_cfg.get("summary_top_k", 5))
-    for paper in sorted(papers, key=lambda p: p.score, reverse=True)[:top_k]:
-        prompt = (
-            "Summarize this paper for the research profile defined in paper_watch.json. "
-            "Return concise bullet points for: one-line contribution, relevance, reusable "
-            "mechanism, and limitation.\n\n"
-            f"Title: {paper.title}\nAbstract: {paper.abstract}"
-        )
-        try:
-            response = client.responses.create(
-                model=model,
-                input=prompt,
-                max_output_tokens=420,
-            )
-            text = getattr(response, "output_text", "").strip()
-            if text:
-                paper.summary = text
-        except Exception as exc:
-            print(f"[warn] OpenAI summary failed for {paper.title!r}: {exc}", file=sys.stderr)
-
-
 def quality_config(config: dict[str, Any]) -> dict[str, Any]:
     return config.get("quality", {})
 
@@ -2312,7 +2279,6 @@ def run(config_path: Path, db_path: Path, offline: bool = False, date: dt.date |
     local_pdfs = local_pdf_papers(config)
     all_new = seed_papers(config) + local_matrix_papers(config) + local_pdfs + fetched + semantic_scholar + github + google_scholar
     scored = [score_paper(paper, config) for paper in all_new]
-    maybe_apply_openai_summaries(scored, config)
     preserve_cached_figure_previews(conn, scored)
     upsert_papers(conn, scored)
     graph_papers = load_recent_papers(conn, int(config["graph"].get("max_papers", 240)))

@@ -424,10 +424,10 @@
       "priority": "P0",
       "url": "README.md",
       "year": "2026",
-      "abstract": "A clean Paper Brain project anchor. Edit config/paper_watch.json to describe your own research focus.",
-      "raw_abstract": "A clean Paper Brain project anchor. Edit config/paper_watch.json to describe your own research focus.",
+      "abstract": "Project anchor for your research map. Edit config/paper_watch.json to describe your own focus.",
+      "raw_abstract": "Project anchor for your research map. Edit config/paper_watch.json to describe your own focus.",
       "analysis": {
-        "one_line": "A clean Paper Brain project anchor. Edit config/paper_watch.json to describe your own research focus.",
+        "one_line": "Project anchor for your research map. Edit config/paper_watch.json to describe your own focus.",
         "innovations": [
           "该节点来自阅读矩阵或外部元数据，需要进一步精读确认真实贡献。"
         ],
@@ -469,7 +469,7 @@
         "quality_warning": "该总结仍处于自动导入/待精读状态，需用全文证据复核后才能作为精读结论。",
         "i18n": {
           "en": {
-            "one_line": "A clean Paper Brain project anchor. Edit config/paper_watch.json to describe your own research focus.",
+            "one_line": "Project anchor for your research map. Edit config/paper_watch.json to describe your own focus.",
             "innovations": [
               "该节点来自阅读矩阵或外部元数据，需要进一步精读确认真实贡献。"
             ],
@@ -493,7 +493,7 @@
             "figure_notes": []
           },
           "zh": {
-            "one_line": "A clean Paper Brain project anchor. Edit config/paper_watch.json to describe your own research focus.",
+            "one_line": "Project anchor for your research map. Edit config/paper_watch.json to describe your own focus.",
             "innovations": [
               "该节点来自阅读矩阵或外部元数据，需要进一步精读确认真实贡献。"
             ],
