@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local virtual environments
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Local runtime cache/state
+data/paper_brain/
+*.sqlite
+*.db
+
+# Downloaded papers, extracted text, and generated figures
+papers/
+doc/paper_brain/figures/*
+!doc/paper_brain/figures/.gitkeep
+
+# Local exports from the dashboard
+paper-brain-selected-summary-*.md
+paper-brain-today-added-summary-*.md
+graph-overrides.local.json
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

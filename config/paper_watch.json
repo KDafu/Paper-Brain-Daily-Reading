@@ -1,0 +1,203 @@
+{
+  "project_name": "Paper Brain",
+  "project": {
+    "id": "project:paper-brain-research-focus",
+    "label": "Paper Brain Research Focus",
+    "url": "README.md"
+  },
+  "profile": {
+    "core_topics": [
+      "robotics",
+      "vision-language",
+      "active perception",
+      "semantic mapping",
+      "mobile manipulation",
+      "reinforcement learning",
+      "world model"
+    ],
+    "must_include_any": [
+      "robot",
+      "navigation",
+      "manipulation",
+      "embodied",
+      "vision-language",
+      "reinforcement learning"
+    ],
+    "boost_terms": {
+      "robot": 2,
+      "mobile manipulation": 6,
+      "active perception": 6,
+      "vision-language-action": 6,
+      "semantic map": 5,
+      "scene graph": 5,
+      "object memory": 5,
+      "reinforcement learning": 5,
+      "world model": 5,
+      "open-source": 3
+    },
+    "negative_terms": {
+      "medical": -5,
+      "protein": -5,
+      "finance": -4,
+      "quantum": -3
+    }
+  },
+  "sources": {
+    "local_reading_matrix": {
+      "enabled": false,
+      "path": "doc/reading_matrix.md"
+    },
+    "local_pdf": {
+      "enabled": false,
+      "paths": [
+        "papers"
+      ],
+      "extract_text": true,
+      "max_text_chars": 5000
+    },
+    "arxiv": {
+      "enabled": false,
+      "api_url": "http://export.arxiv.org/api/query",
+      "categories": [
+        "cs.RO",
+        "cs.CV",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "query_terms": [
+        "\"vision language\" robot",
+        "\"active perception\" robot",
+        "\"mobile manipulation\"",
+        "\"reinforcement learning\" robot",
+        "\"world model\" robot"
+      ],
+      "max_results_per_query": 8,
+      "lookback_days": 7,
+      "request_delay_seconds": 3
+    },
+    "semantic_scholar": {
+      "enabled": false,
+      "api_url": "https://api.semanticscholar.org/graph/v1/paper/search",
+      "query": "robot active perception vision language mobile manipulation",
+      "fields": "title,abstract,authors,year,url,externalIds,publicationDate,openAccessPdf,fieldsOfStudy,citationCount,referenceCount,influentialCitationCount",
+      "limit": 20,
+      "request_delay_seconds": 1
+    },
+    "github": {
+      "enabled": false,
+      "api_url": "https://api.github.com/search/repositories",
+      "query_terms": [
+        "\"vision-language-action\" robot paper",
+        "\"active perception\" robot paper",
+        "\"mobile manipulation\" reinforcement learning"
+      ],
+      "max_results_per_query": 3,
+      "sort": "updated",
+      "order": "desc",
+      "request_delay_seconds": 1
+    },
+    "google_scholar": {
+      "enabled": false,
+      "provider": "serpapi",
+      "api_url": "https://serpapi.com/search",
+      "query_terms": [
+        "vision language action robot active perception"
+      ],
+      "num": 10,
+      "as_ylo": 2023,
+      "request_delay_seconds": 1
+    }
+  },
+  "daily_selection": {
+    "max_new_items": 10,
+    "max_papers": 8,
+    "max_code_repos": 3,
+    "deep_read_max_items": 5,
+    "min_score": 0
+  },
+  "llm": {
+    "enabled": false,
+    "provider": "openai",
+    "model": "gpt-4.1-mini",
+    "summary_top_k": 5
+  },
+  "quality": {
+    "strict_mode": true,
+    "deep_read_dir": "doc/paper_brain/deep_reads",
+    "deep_read_index": "doc/paper_brain/deep_read_index.json",
+    "quality_audit": "doc/paper_brain/quality_audit.md",
+    "require_fulltext_for_deep_read": true,
+    "require_verified_figures_for_deep_read": true,
+    "min_evidence_items": 4,
+    "max_deep_reads_per_manual_batch": 5,
+    "auto_import_status": "auto_imported",
+    "default_existing_status": "needs_deep_read"
+  },
+  "digest": {
+    "top_n": 10,
+    "deep_read_top_k": 5,
+    "min_score": 3,
+    "output_dir": "doc/daily_paper_digest",
+    "deep_reading_queue": "doc/paper_brain/deep_reading_queue.md"
+  },
+  "graph": {
+    "output_dir": "doc/paper_brain",
+    "pdf_cache_dir": "data/paper_brain/pdfs",
+    "text_cache_dir": "data/paper_brain/text",
+    "figure_cache_dir": "doc/paper_brain/figures",
+    "figure_preview": {
+      "enabled": false,
+      "extractor_version": "v2",
+      "max_figures_per_paper": 3,
+      "min_extracted_width": 420,
+      "min_extracted_height": 260,
+      "min_extracted_area": 180000,
+      "max_candidate_pages_per_paper": 2,
+      "extraction_timeout_seconds": 8,
+      "page_snapshot_fallback": true,
+      "page_snapshot_dpi": 120,
+      "failure_cooldown_days": 14,
+      "max_papers_per_run": 10,
+      "download_external_pdfs": false,
+      "max_external_downloads_per_run": 3,
+      "max_pdf_download_mb": 60,
+      "download_timeout_seconds": 45
+    },
+    "overrides_path": "doc/paper_brain/graph-overrides.json",
+    "max_papers": 240,
+    "seed_papers": [
+      {
+        "title": "Paper Brain Research Focus",
+        "year": "2026",
+        "topics": [
+          "Research Map",
+          "Literature Review",
+          "Knowledge Graph"
+        ],
+        "url": "README.md",
+        "is_project": true,
+        "abstract": "A clean Paper Brain project anchor. Edit config/paper_watch.json to describe your own research focus."
+      },
+      {
+        "title": "Example Seed Paper: Vision-Language Robots",
+        "year": "2024",
+        "topics": [
+          "VLA",
+          "Robot Foundation Model",
+          "Manipulation"
+        ],
+        "url": "https://arxiv.org/"
+      },
+      {
+        "title": "Example Seed Project: Active Perception System",
+        "year": "2024",
+        "topics": [
+          "Active Perception",
+          "Semantic Mapping",
+          "Mobile Manipulation"
+        ],
+        "url": "https://github.com/"
+      }
+    ]
+  }
+}

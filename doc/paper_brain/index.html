@@ -1,0 +1,3380 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paper Brain</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #05070a;
+        --surface: #101318;
+        --panel: rgba(20, 24, 30, 0.84);
+        --panel-2: rgba(32, 39, 48, 0.58);
+        --ink: #f5f5f7;
+        --muted: #a8b2bd;
+        --muted-2: #74808d;
+        --line: rgba(255, 255, 255, 0.12);
+        --topic: #9fd9bd;
+        --domain: #d5dde7;
+        --paper: #a8d9ff;
+        --local: #a7d4ec;
+        --repo: #d9c68b;
+        --seed: #bbc7f2;
+        --project: #ff8a7a;
+        --edge: rgba(172, 218, 255, 0.2);
+        --grid: rgba(168, 217, 255, 0.06);
+        --accent: #a8d9ff;
+        --accent-soft: rgba(168, 217, 255, 0.16);
+        --topic-soft: rgba(159, 217, 189, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+        background: linear-gradient(180deg, #05070a 0%, #0b0f14 100%);
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        min-height: 100vh;
+      }
+
+      .graph-shell {
+        position: relative;
+        overflow: hidden;
+        background:
+          linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+          linear-gradient(180deg, var(--grid) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(9, 13, 18, 0.12), rgba(5, 7, 10, 0.96));
+        background-size: 80px 80px, 80px 80px, 100% 100%;
+      }
+
+      .graph-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(210, 234, 255, 0.035), transparent 22%),
+          repeating-linear-gradient(0deg, rgba(210, 234, 255, 0.03) 0 1px, transparent 1px 8px);
+        opacity: 0.5;
+      }
+
+      .graph-shell::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(115deg, transparent 0 45%, rgba(168, 217, 255, 0.055) 46%, transparent 47% 100%),
+          linear-gradient(180deg, rgba(168, 217, 255, 0.04), transparent 38%);
+        opacity: 0.24;
+      }
+
+      header {
+        position: absolute;
+        z-index: 5;
+        top: 18px;
+        left: 22px;
+        right: 22px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        pointer-events: none;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(24px, 3vw, 42px);
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      .title-input {
+        display: block;
+        width: min(720px, 52vw);
+        min-width: 280px;
+        pointer-events: auto;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--ink);
+        border-radius: 8px;
+        padding: 2px 6px 4px;
+        font: inherit;
+        font-size: clamp(24px, 3vw, 42px);
+        font-weight: 800;
+        line-height: 1.02;
+        box-shadow: none;
+      }
+
+      .title-input:hover,
+      .title-input:focus {
+        border-color: rgba(168, 217, 255, 0.24);
+        background: rgba(168, 217, 255, 0.055);
+        outline: none;
+      }
+
+      .subtitle {
+        display: none;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+        pointer-events: auto;
+      }
+
+      button,
+      input,
+      select {
+        border: 1px solid var(--line);
+        background: rgba(20, 24, 30, 0.72);
+        color: var(--ink);
+        border-radius: 8px;
+        font: inherit;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      }
+
+      button {
+        height: 36px;
+        padding: 0 12px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: rgba(245, 245, 247, 0.3);
+        background: rgba(34, 42, 52, 0.8);
+      }
+
+      #graph {
+        width: 100%;
+        height: 100vh;
+        display: block;
+      }
+
+      aside {
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+        backdrop-filter: blur(28px) saturate(140%);
+        padding: 18px;
+        overflow: auto;
+        max-height: 100vh;
+      }
+
+      .search {
+        width: 100%;
+        height: 40px;
+        padding: 0 12px;
+      }
+
+      .search-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+      }
+
+      .search-row .search {
+        min-width: 0;
+      }
+
+      .search-status {
+        min-height: 0;
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .search-status.search-hit {
+        color: #cfe7ff;
+      }
+
+      .search-status.search-miss {
+        color: #f0b9ad;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 10px 0 0;
+      }
+
+      .controls button {
+        width: 100%;
+      }
+
+      .filters {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin: 10px 0 0;
+      }
+
+      .layer-readout {
+        display: none;
+      }
+
+      .filters select {
+        width: 100%;
+        height: 38px;
+        padding: 0 10px;
+      }
+
+      .top-filter-active {
+        border-color: rgba(168, 217, 255, 0.62);
+        background: rgba(168, 217, 255, 0.14);
+        color: #d7ecff;
+      }
+
+      .top-filter-active.today-active {
+        border-color: rgba(159, 217, 189, 0.68);
+        background: rgba(159, 217, 189, 0.14);
+        color: #d8ffe9;
+      }
+
+      .favorite-active {
+        border-color: rgba(168, 217, 255, 0.62);
+        background: rgba(168, 217, 255, 0.14);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin: 14px 0;
+      }
+
+      .stat {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        background: var(--panel-2);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      }
+
+      .stat strong {
+        display: block;
+        font-size: 20px;
+      }
+
+      .stat span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 28px;
+        padding: 4px 8px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .legend .chip {
+        height: auto;
+        min-height: 28px;
+        padding: 4px 9px;
+        line-height: 1.2;
+        transition:
+          border-color 160ms ease,
+          background 160ms ease,
+          color 160ms ease,
+          opacity 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      .legend .chip:hover,
+      .legend .chip:focus-visible {
+        border-color: rgba(245, 245, 247, 0.34);
+        background: rgba(168, 217, 255, 0.08);
+        outline: none;
+      }
+
+      .legend .legend-active {
+        border-color: rgba(168, 217, 255, 0.62);
+        background: rgba(168, 217, 255, 0.13);
+        color: #e1f1ff;
+        box-shadow:
+          0 0 0 1px rgba(168, 217, 255, 0.08),
+          0 0 22px rgba(168, 217, 255, 0.08);
+      }
+
+      .legend .legend-muted {
+        opacity: 0.48;
+      }
+
+      .legend-paper-group {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 5px;
+        min-height: 32px;
+        padding: 2px;
+        border: 1px solid rgba(168, 217, 255, 0.12);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.018);
+        transition:
+          border-color 160ms ease,
+          background 160ms ease,
+          opacity 160ms ease;
+      }
+
+      .legend-paper-group.paper-group-active {
+        border-color: rgba(168, 217, 255, 0.34);
+        background: rgba(168, 217, 255, 0.045);
+      }
+
+      .paper-quality-options {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .paper-quality-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        min-height: 24px;
+        padding: 2px 7px;
+        border: 1px solid rgba(168, 217, 255, 0.16);
+        border-radius: 999px;
+        color: var(--muted-2);
+        font-size: 11px;
+        line-height: 1.1;
+        cursor: pointer;
+        user-select: none;
+        transition:
+          border-color 160ms ease,
+          background 160ms ease,
+          color 160ms ease,
+          opacity 160ms ease;
+      }
+
+      .paper-quality-option:hover {
+        border-color: rgba(168, 217, 255, 0.36);
+        color: #d7ecff;
+      }
+
+      .paper-quality-option input {
+        width: 11px;
+        height: 11px;
+        margin: 0;
+        appearance: none;
+        border: 1px solid rgba(168, 217, 255, 0.42);
+        border-radius: 3px;
+        background: rgba(5, 7, 10, 0.7);
+        box-shadow: none;
+      }
+
+      .paper-quality-option input:checked {
+        border-color: rgba(168, 217, 255, 0.82);
+        background:
+          linear-gradient(135deg, transparent 0 48%, rgba(5, 7, 10, 0.92) 50% 58%, transparent 60%),
+          var(--paper);
+      }
+
+      .paper-quality-option.quality-active {
+        border-color: rgba(168, 217, 255, 0.48);
+        background: rgba(168, 217, 255, 0.1);
+        color: #e1f1ff;
+      }
+
+      .paper-quality-option.quality-muted {
+        opacity: 0.52;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .mark {
+        width: 13px;
+        height: 13px;
+        display: inline-block;
+        border: 2px solid currentColor;
+        background: currentColor;
+      }
+
+      .mark-project {
+        border-radius: 3px;
+        color: var(--project);
+      }
+
+      .mark-all {
+        border-radius: 50%;
+        color: var(--accent);
+        background:
+          radial-gradient(circle, currentColor 0 30%, transparent 32%),
+          conic-gradient(from 45deg, var(--paper), var(--topic), var(--repo), var(--seed), var(--paper));
+      }
+
+      .mark-paper {
+        border-radius: 50%;
+        color: var(--paper);
+      }
+
+      .mark-topic {
+        border: 0;
+        width: 16px;
+        height: 10px;
+        border-radius: 999px;
+        color: var(--topic);
+        background: currentColor;
+      }
+
+      .mark-domain {
+        border: 0;
+        color: var(--domain);
+        background: currentColor;
+        clip-path: polygon(50% 0, 95% 24%, 95% 76%, 50% 100%, 5% 76%, 5% 24%);
+      }
+
+      .mark-seed {
+        color: var(--seed);
+        transform: rotate(45deg);
+      }
+
+      .mark-local {
+        width: 11px;
+        border-radius: 2px;
+        color: var(--local);
+      }
+
+      .mark-repo {
+        color: var(--repo);
+        clip-path: polygon(8% 20%, 38% 20%, 46% 6%, 92% 6%, 92% 92%, 8% 92%);
+      }
+
+      .type-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 2px 7px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 10px 0 4px;
+      }
+
+      .signal-tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 3px 8px;
+        border: 1px solid rgba(217, 198, 139, 0.46);
+        border-radius: 999px;
+        background: rgba(217, 198, 139, 0.12);
+        color: #eadba6;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .quality-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 2px 8px;
+        border: 1px solid rgba(168, 217, 255, 0.36);
+        border-radius: 999px;
+        background: rgba(168, 217, 255, 0.1);
+        color: #d7ecff;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .quality-needs_deep_read,
+      .quality-auto_imported {
+        border-color: rgba(240, 185, 173, 0.38);
+        background: rgba(240, 185, 173, 0.09);
+        color: #f4c7bd;
+      }
+
+      .quality-quick_checked {
+        border-color: rgba(217, 198, 139, 0.42);
+        background: rgba(217, 198, 139, 0.1);
+        color: #eadba6;
+      }
+
+      .quality-deep_read {
+        border-color: rgba(168, 217, 255, 0.55);
+        background: rgba(168, 217, 255, 0.14);
+        color: #e1f1ff;
+      }
+
+      .quality-box {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .quality-warning {
+        color: #f4c7bd;
+      }
+
+      .figure-grid {
+        display: grid;
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      .figure-grid figure {
+        position: relative;
+        margin: 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(10, 10, 12, 0.78);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+      }
+
+      .figure-grid img {
+        display: block;
+        width: 100%;
+        max-height: 320px;
+        object-fit: contain;
+        background: #0a0a0c;
+      }
+
+      .figure-grid figure.image-missing::after {
+        content: "Embedded figure unavailable";
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        color: var(--muted);
+        background: rgba(10, 10, 12, 0.94);
+        font-size: 12px;
+        text-align: center;
+      }
+
+      .figure-grid figcaption {
+        padding: 7px 9px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .detail {
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+
+      .detail h2 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        line-height: 1.2;
+      }
+
+      .meta {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .abstract {
+        margin-top: 12px;
+        line-height: 1.55;
+        font-size: 14px;
+      }
+
+      .section {
+        margin-top: 14px;
+      }
+
+      .section-title {
+        margin-bottom: 6px;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .section ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .section li {
+        margin: 5px 0;
+        line-height: 1.45;
+        font-size: 13px;
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .list {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .item {
+        position: relative;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.018);
+        overflow: hidden;
+      }
+
+      .item::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 3px;
+        background: var(--domain);
+        opacity: 0.76;
+      }
+
+      .item:hover {
+        border-color: rgba(245, 245, 247, 0.28);
+        background: rgba(168, 217, 255, 0.055);
+      }
+
+      .item-selected {
+        border-color: rgba(245, 245, 247, 0.36);
+        background: rgba(168, 217, 255, 0.08);
+      }
+
+      .item-paper::before {
+        background: var(--paper);
+      }
+
+      .item-local_pdf::before {
+        background: var(--local);
+      }
+
+      .item-code_repo::before {
+        background: var(--repo);
+      }
+
+      .item-topic::before {
+        background: var(--topic);
+      }
+
+      .item-seed::before {
+        background: var(--seed);
+      }
+
+      .item-project::before {
+        background: var(--project);
+      }
+
+      .item-today {
+        border-color: rgba(159, 217, 189, 0.28);
+        background: linear-gradient(90deg, rgba(159, 217, 189, 0.08), rgba(168, 217, 255, 0.035));
+      }
+
+      .item-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 7px;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+
+      .item-meta {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .node-mini {
+        flex: 0 0 auto;
+        width: 11px;
+        height: 11px;
+        margin-top: 3px;
+        border-radius: 50%;
+        background: var(--paper);
+        box-shadow: 0 0 12px rgba(168, 217, 255, 0.2);
+      }
+
+      .node-mini-topic {
+        width: 14px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--topic);
+      }
+
+      .node-mini-domain {
+        border-radius: 0;
+        background: var(--domain);
+        clip-path: polygon(50% 0, 95% 24%, 95% 76%, 50% 100%, 5% 76%, 5% 24%);
+      }
+
+      .node-mini-code_repo {
+        border-radius: 0;
+        background: var(--repo);
+        clip-path: polygon(8% 20%, 38% 20%, 46% 6%, 92% 6%, 92% 92%, 8% 92%);
+      }
+
+      .node-mini-local_pdf {
+        width: 9px;
+        height: 13px;
+        border-radius: 2px;
+        background: var(--local);
+      }
+
+      .node-mini-seed {
+        border-radius: 0;
+        background: var(--seed);
+        transform: rotate(45deg);
+      }
+
+      .node-mini-project {
+        border-radius: 2px;
+        background: var(--project);
+      }
+
+      .inline-tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 18px;
+        margin-left: 5px;
+        padding: 1px 6px;
+        border: 1px solid rgba(159, 217, 189, 0.42);
+        border-radius: 999px;
+        color: #d8ffe9;
+        background: rgba(159, 217, 189, 0.1);
+        font-size: 10px;
+        font-weight: 800;
+      }
+
+      .neighbor-group {
+        display: grid;
+        gap: 7px;
+        margin-top: 12px;
+      }
+
+      .neighbor-group-title {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      a {
+        color: #aac8ff;
+      }
+
+      details.sidebar-panel {
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-2);
+      }
+
+      details.sidebar-panel summary {
+        min-height: 38px;
+        padding: 9px 11px;
+        cursor: pointer;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      details.sidebar-panel .controls {
+        margin: 0;
+        padding: 0 10px 10px;
+      }
+
+      .panel-body {
+        padding: 0 10px 10px;
+      }
+
+      .single-control {
+        grid-template-columns: 1fr;
+        padding: 0;
+      }
+
+      .action-title {
+        margin: 8px 0 6px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .compact-list {
+        display: grid;
+        gap: 7px;
+      }
+
+      .compact-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+        min-height: 34px;
+        padding: 7px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.018);
+      }
+
+      .compact-title {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .compact-meta {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .tiny-button {
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 7px;
+        font-size: 12px;
+      }
+
+      .favorite-category-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .favorite-category-form input,
+      .favorite-category-form select,
+      .favorite-category-filter {
+        width: 100%;
+        height: 36px;
+        padding: 0 10px;
+      }
+
+      .favorite-category-form .category-new-input {
+        min-width: 0;
+      }
+
+      .favorite-category-filter {
+        margin-bottom: 8px;
+      }
+
+      .favorite-category-block {
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.018);
+        overflow: hidden;
+      }
+
+      .favorite-category-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        height: auto;
+        min-height: 34px;
+        padding: 7px 8px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        text-align: left;
+      }
+
+      .favorite-category-head.category-active {
+        color: #e1f1ff;
+        background: rgba(168, 217, 255, 0.1);
+      }
+
+      .favorite-category-items {
+        display: grid;
+        gap: 1px;
+        padding: 0 8px 8px;
+      }
+
+      .favorite-paper-link {
+        width: 100%;
+        height: auto;
+        min-height: 28px;
+        padding: 4px 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+        text-align: left;
+      }
+
+      .favorite-paper-link:hover {
+        color: var(--ink);
+        background: transparent;
+      }
+
+      .favorite-paper-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 104px;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .favorite-paper-row select {
+        width: 100%;
+        height: 28px;
+        padding: 0 6px;
+        border-radius: 7px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .export-footer {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 860px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        #graph {
+          height: 62vh;
+        }
+
+        aside {
+          max-height: none;
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+
+        header {
+          position: static;
+          padding: 16px;
+          background: var(--bg);
+          pointer-events: auto;
+        }
+
+        .graph-shell {
+          display: flex;
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <main class="graph-shell">
+        <header>
+          <div>
+            <input class="title-input" id="appTitle" value="Paper Brain" aria-label="Dashboard title" />
+            <div class="subtitle" id="generated"></div>
+          </div>
+          <div class="toolbar">
+            <button id="langBtn" type="button">中文</button>
+            <button id="favoritesBtn" type="button">Favorites</button>
+            <button id="todayBtn" type="button">Today</button>
+            <button id="localGraphBtn" type="button">Local Graph</button>
+            <button id="topicDepthBtn" type="button">Expand Topics</button>
+            <button id="resetBtn" type="button">Reset</button>
+            <button id="focusBtn" type="button">Project</button>
+          </div>
+        </header>
+        <canvas id="graph"></canvas>
+      </main>
+      <aside>
+        <div class="search-row">
+          <input class="search" id="search" placeholder="Search papers, topics, methods..." />
+          <button id="searchBtn" type="button">Search</button>
+        </div>
+        <div class="search-status" id="searchStatus"></div>
+        <div class="filters">
+          <select id="viewFilter" class="hidden" aria-hidden="true" tabindex="-1">
+            <option value="all">All Nodes</option>
+            <option value="project">Project</option>
+            <option value="paper">Papers</option>
+            <option value="local_pdf">Local PDFs</option>
+            <option value="code_repo">Code Repos</option>
+            <option value="domain">Domains</option>
+            <option value="topics">Topics</option>
+            <option value="seed">Seed</option>
+            <option value="deep_read">Deep Read</option>
+            <option value="needs_review">Needs Review</option>
+          </select>
+          <div class="layer-readout" id="layerReadout"></div>
+          <div class="legend" id="legend">
+            <button class="chip legend-active" type="button" data-filter="all"><span class="mark mark-all"></span><span>All Nodes</span></button>
+            <button class="chip" type="button" data-filter="project"><span class="mark mark-project"></span><span>Project</span></button>
+            <div class="legend-paper-group" id="paperLegendGroup">
+              <button class="chip" type="button" data-filter="paper"><span class="mark mark-paper"></span><span>Paper</span></button>
+              <div class="paper-quality-options">
+                <label class="paper-quality-option" data-quality-filter="deep_read">
+                  <input type="checkbox" value="deep_read" />
+                  <span>Deep Read</span>
+                </label>
+                <label class="paper-quality-option" data-quality-filter="needs_review">
+                  <input type="checkbox" value="needs_review" />
+                  <span>Needs Review</span>
+                </label>
+              </div>
+            </div>
+            <button class="chip" type="button" data-filter="local_pdf"><span class="mark mark-local"></span><span>Local PDF</span></button>
+            <button class="chip" type="button" data-filter="code_repo"><span class="mark mark-repo"></span><span>Code Repo</span></button>
+            <button class="chip" type="button" data-filter="domain"><span class="mark mark-domain"></span><span>Domain</span></button>
+            <button class="chip" type="button" data-filter="topics"><span class="mark mark-topic"></span><span>Topic</span></button>
+            <button class="chip" type="button" data-filter="seed"><span class="mark mark-seed"></span><span>Seed</span></button>
+          </div>
+        </div>
+        <details class="sidebar-panel actions" open>
+          <summary id="actionsSummary">Actions</summary>
+          <div class="panel-body">
+            <div class="controls single-control">
+              <button id="hideNodeBtn" type="button">Hide Selected</button>
+            </div>
+            <div class="action-title" id="hiddenNodesTitle">Hidden Nodes</div>
+            <div class="compact-list" id="hiddenNodesList"></div>
+          </div>
+        </details>
+        <details class="sidebar-panel" open>
+          <summary id="favoritesSummary">Favorites</summary>
+          <div class="panel-body">
+            <div class="favorite-category-form">
+              <select id="favoriteCategorySelect"></select>
+              <button id="assignFavoriteCategoryBtn" type="button">Classify</button>
+              <input id="favoriteCategoryInput" class="category-new-input" placeholder="New category" />
+              <button id="clearFavoriteCategoryBtn" type="button">Unfile</button>
+            </div>
+            <select id="favoriteCategoryFilter" class="favorite-category-filter"></select>
+            <div class="compact-list" id="favoriteCategoryList"></div>
+            <div class="export-footer">
+              <div class="compact-meta" id="exportSelectionStatus"></div>
+              <button id="exportSelectedBtn" type="button">Export Selected</button>
+              <button id="exportTodayBtn" type="button">Export Today</button>
+              <button id="clearExportSelectionBtn" type="button">Clear Export Basket</button>
+            </div>
+          </div>
+        </details>
+        <div class="stats">
+          <div class="stat"><strong id="paperCount">0</strong><span>Papers</span></div>
+          <div class="stat"><strong id="repoCount">0</strong><span>Code Repos</span></div>
+          <div class="stat"><strong id="domainCount">0</strong><span>Domains</span></div>
+          <div class="stat"><strong id="topicCount">0</strong><span>Topics</span></div>
+          <div class="stat"><strong id="edgeCount">0</strong><span>Edges</span></div>
+          <div class="stat"><strong id="favoriteCount">0</strong><span>Favorites</span></div>
+        </div>
+        <section class="detail" id="detail">
+          <h2>Select a node</h2>
+        </section>
+        <section class="list" id="results"></section>
+      </aside>
+    </div>
+    <script src="graph-data.js"></script>
+    <script>
+      const graph = window.PAPER_BRAIN_GRAPH || { nodes: [], edges: [] };
+      const defaultProjectNodeId = graph.project_node_id || "project:paper-brain-research-focus";
+      const canvas = document.getElementById("graph");
+      const ctx = canvas.getContext("2d");
+      const detail = document.getElementById("detail");
+      const results = document.getElementById("results");
+      const search = document.getElementById("search");
+      const searchStatus = document.getElementById("searchStatus");
+      const appTitleInput = document.getElementById("appTitle");
+      const colors = {
+        project: "#ff8a7a",
+        paper: "#a8d9ff",
+        local_pdf: "#a7d4ec",
+        code_repo: "#d9c68b",
+        seed: "#bbc7f2",
+        topic: "#9fd9bd",
+        domain: "#d5dde7",
+      };
+      const storageKeys = {
+        lang: "paperBrain.lang",
+        favorites: "paperBrain.favorites",
+        favoriteCategories: "paperBrain.favoriteCategories",
+        exportSelection: "paperBrain.exportSelection",
+        hidden: "paperBrain.hiddenNodes",
+        pinned: "paperBrain.pinnedNodes",
+        addedNodes: "paperBrain.addedNodes",
+        addedEdges: "paperBrain.addedEdges",
+        topicDepth: "paperBrain.topicDepth",
+        title: "paperBrain.title",
+      };
+      const i18n = {
+        en: {
+          appTitle: "Paper Brain",
+          loading: "",
+          generated: () => "",
+          langButton: "中文",
+          favoritesButton: "Favorites",
+          favoritesOnlyButton: "Exit Favorites",
+          todayButton: "Today Added",
+          todayOnlyButton: "Exit Today",
+          localGraphButton: "Local Graph",
+          globalGraphButton: "Global Graph",
+          expandTopicsButton: "Layer",
+          collapseTopicsButton: "Layer",
+          layerAuto: "Auto",
+          layerDomain: "Domains",
+          layerTopic: "Topics",
+          layerDetail: "Detail",
+          layerReadout: "Layer",
+          layerHintAuto: "",
+          layerHintBranch: () => "",
+          localGraphHint: "",
+          searchButton: "Search",
+          searchReady: "",
+          searchResults: (count, query) => `${count} matches for "${query}".`,
+          searchNoResults: (query) => `No matches for "${query}".`,
+          resetButton: "Reset",
+          projectButton: "Project",
+          searchPlaceholder: "Search papers, topics, methods...",
+          allNodes: "All Nodes",
+          papersOnly: "Papers",
+          codeRepos: "Code Repos",
+          domainsOnly: "Domains",
+          topicsOnly: "Topics",
+          localPdfs: "Local PDFs",
+          deepRead: "Deep Read",
+          needsReview: "Needs Review",
+          favoritesPanel: "Favorites",
+          favoriteCategory: "Category",
+          newFavoriteCategory: "New category",
+          classifyFavorite: "Classify",
+          clearFavoriteCategory: "Unfile",
+          categorySelectPlaceholder: "Use selected category",
+          changeCategory: "Move",
+          allCategories: "All categories",
+          uncategorized: "Uncategorized",
+          hiddenNodes: "Hidden Nodes",
+          hiddenEmpty: "No hidden nodes.",
+          restoreNode: "Restore",
+          addToExport: "Add to export",
+          removeFromExport: "Selected for export",
+          exportSelected: "Export Selected",
+          exportToday: "Export Today Added",
+          clearExportSelection: "Clear Export Basket",
+          exportSelectionStatus: (count) => `${count} selected`,
+          exportSelectedEmpty: "Select one or more papers first.",
+          exportTodayEmpty: "No today-added papers or projects are available.",
+          exportedSummaryTitle: "Paper Brain Selected Reading Summary",
+          exportedTodayTitle: "Paper Brain Today Added Summary",
+          categoryAssigned: "Added to category.",
+          categoryCleared: "Removed from category.",
+          exportSelectionCleared: "Export basket cleared.",
+          actions: "Actions",
+          hideNode: "Hide Selected",
+          papers: "Papers",
+          codeRepoStats: "Code Repos",
+          domains: "Domains",
+          topics: "Topics",
+          edges: "Edges",
+          favorites: "Favorites",
+          project: "Project",
+          paper: "Paper",
+          topic: "Topic",
+          domain: "Domain",
+          seed: "Seed",
+          localPdf: "Local PDF",
+          codeRepo: "Code Repo",
+          nodeTypeHint: "Graph node type",
+          paperNodeHint: "This is a paper-like node.",
+          codeRepoNodeHint: "This is a code repository node. Use it to inspect reproducibility, interfaces, and implementation clues.",
+          topicNodeHint: "This topic groups papers and repositories that share a specific method or task pattern.",
+          domainNodeHint: "This domain is a higher-level research area. Expand topics to inspect its smaller branches.",
+          projectNodeHint: "This is your project anchor. Use it to connect papers, topics, methods, datasets, and implementation clues.",
+          basicInfo: "Basic Info",
+          qualityStatus: "Quality Status",
+          qualityAuto: "Auto Imported",
+          qualityNeeds: "Needs Deep Read",
+          qualityQuick: "Quick Checked",
+          qualityDeep: "Deep Read",
+          qualityGaps: "Quality Gaps",
+          qualityWarning: "Automatic note: verify against full text before treating this as a deep-read conclusion.",
+          deepReadNote: "Deep-read note",
+          importantFigures: "Extracted PDF Figures",
+          verifiedFigureNotes: "Verified Figure Notes",
+          topSignals: "Venue / Lab Signals",
+          domainIntro: "Domain Intro",
+          summary: "Summary",
+          innovations: "Innovations",
+          evidenceItems: "Evidence From Full Text",
+          relevance: "Relevance To Your Project",
+          mechanisms: "Reusable Mechanisms",
+          limitations: "Limitations",
+          readingQuestions: "Deep Reading Questions",
+          relatedPapers: "Related Papers",
+          clickNode: "Select a node",
+          clickHint: "",
+          open: "open",
+          pdf: "pdf",
+          favorite: "Favorite",
+          unfavorite: "Favorited",
+          neighbors: "Connected nodes",
+          noFavorites: "No favorites yet. Open a paper node and click Favorite.",
+          noTodayItems: "No daily items are marked in this graph yet.",
+          todayTag: "Today",
+          importDone: (count) => `Imported ${count} favorites.`,
+          clearConfirm: "Clear all favorites?",
+          noNodeSelected: "Select a node first.",
+          hideConfirm: "Hide this node from the current graph view?",
+          removeAddedConfirm: "Remove this locally added node?",
+          fulltext: "full text",
+          citations: "citations",
+          references: "references",
+          stars: "stars",
+          forks: "forks",
+          language: "language",
+          noFigures: "No eligible embedded figures were extracted from the PDF yet.",
+          figureNeedsVerification: "Fallback page snapshot; verify the actual key figure during deep reading.",
+          figureErrors: "Figure Extraction Notes",
+        },
+        zh: {
+          appTitle: "Paper Brain 论文大脑",
+          loading: "",
+          generated: () => "",
+          langButton: "EN",
+          favoritesButton: "收藏夹",
+          favoritesOnlyButton: "退出收藏",
+          todayButton: "今日新增",
+          todayOnlyButton: "退出今日",
+          localGraphButton: "局部图谱",
+          globalGraphButton: "全局图谱",
+          expandTopicsButton: "层级",
+          collapseTopicsButton: "层级",
+          layerAuto: "自动",
+          layerDomain: "大领域",
+          layerTopic: "主题",
+          layerDetail: "细节",
+          layerReadout: "层级",
+          layerHintAuto: "",
+          layerHintBranch: () => "",
+          localGraphHint: "",
+          searchButton: "搜索",
+          searchReady: "",
+          searchResults: (count, query) => `"${query}" 找到 ${count} 个结果。`,
+          searchNoResults: (query) => `没有找到 "${query}"。`,
+          resetButton: "重置",
+          projectButton: "项目",
+          searchPlaceholder: "搜索论文、主题、方法...",
+          allNodes: "全部节点",
+          papersOnly: "论文",
+          codeRepos: "代码仓库",
+          domainsOnly: "大领域",
+          topicsOnly: "主题",
+          localPdfs: "本地 PDF",
+          deepRead: "已精读",
+          needsReview: "待复核",
+          favoritesPanel: "收藏夹",
+          favoriteCategory: "分类",
+          newFavoriteCategory: "新建分类",
+          classifyFavorite: "分类",
+          clearFavoriteCategory: "移出分类",
+          categorySelectPlaceholder: "使用选中分类",
+          changeCategory: "移动",
+          allCategories: "全部分类",
+          uncategorized: "未分类",
+          hiddenNodes: "隐藏节点夹",
+          hiddenEmpty: "暂无隐藏节点。",
+          restoreNode: "恢复",
+          addToExport: "加入导出",
+          removeFromExport: "已加入导出",
+          exportSelected: "导出选中文章",
+          exportToday: "导出今日新增",
+          clearExportSelection: "清空已加入导出",
+          exportSelectionStatus: (count) => `已选 ${count} 篇`,
+          exportSelectedEmpty: "请先选择一篇或多篇论文/项目。",
+          exportTodayEmpty: "当前没有可导出的今日新增论文/项目。",
+          exportedSummaryTitle: "Paper Brain 选中文章精读汇总",
+          exportedTodayTitle: "Paper Brain 今日新增汇总",
+          categoryAssigned: "已加入分类。",
+          categoryCleared: "已移出分类。",
+          exportSelectionCleared: "已清空导出篮。",
+          actions: "操作",
+          hideNode: "隐藏选中节点",
+          papers: "论文",
+          codeRepoStats: "代码仓库",
+          domains: "大领域",
+          topics: "主题",
+          edges: "关系",
+          favorites: "收藏",
+          project: "项目",
+          paper: "论文",
+          topic: "主题",
+          domain: "大领域",
+          seed: "种子",
+          localPdf: "本地 PDF",
+          codeRepo: "代码仓库",
+          nodeTypeHint: "图谱节点类型",
+          paperNodeHint: "这是论文类节点。",
+          codeRepoNodeHint: "这是代码仓库节点。重点查看它的复现价值、接口边界和实现线索。",
+          topicNodeHint: "这个主题汇集共享同一类方法、任务或系统接口的论文与项目。",
+          domainNodeHint: "这是更高层级的研究领域。展开主题后可以查看它下面的细小分支。",
+          projectNodeHint: "这是你的课题中心，用于连接论文、主题、方法、数据集和实现线索。",
+          basicInfo: "基本信息",
+          qualityStatus: "质量状态",
+          qualityAuto: "自动导入",
+          qualityNeeds: "待精读",
+          qualityQuick: "快读校验",
+          qualityDeep: "已精读",
+          qualityGaps: "质量缺口",
+          qualityWarning: "自动说明：未用全文证据复核前，不应视为精读结论。",
+          deepReadNote: "精读笔记",
+          importantFigures: "PDF 内嵌关键图",
+          verifiedFigureNotes: "已确认关键图说明",
+          topSignals: "顶会 / 团队信号",
+          domainIntro: "领域介绍",
+          summary: "总结摘要",
+          innovations: "创新点",
+          evidenceItems: "全文证据",
+          relevance: "与当前课题的关系",
+          mechanisms: "可迁移机制",
+          limitations: "局限与不可照搬之处",
+          readingQuestions: "精读问题",
+          relatedPapers: "相关论文",
+          clickNode: "选择节点",
+          clickHint: "",
+          open: "打开",
+          pdf: "PDF",
+          favorite: "收藏",
+          unfavorite: "已收藏",
+          neighbors: "相连节点",
+          noFavorites: "还没有收藏。打开一个论文节点，然后点击收藏。",
+          noTodayItems: "这张图里还没有标记今日新增节点。",
+          todayTag: "今日",
+          importDone: (count) => `已导入 ${count} 个收藏。`,
+          clearConfirm: "确定清空全部收藏吗？",
+          noNodeSelected: "请先选择一个节点。",
+          hideConfirm: "从当前图谱视图中隐藏这个节点吗？",
+          removeAddedConfirm: "删除这个本地新增节点吗？",
+          fulltext: "全文",
+          citations: "引用",
+          references: "参考文献",
+          stars: "star",
+          forks: "fork",
+          language: "语言",
+          noFigures: "暂未从 PDF 中抽到合格的内嵌关键图。",
+          figureNeedsVerification: "这是整页快照兜底图，精读时需要人工确认真正关键图。",
+          figureErrors: "抽图说明",
+        },
+      };
+      const labelMap = {
+        Project: { en: "Project", zh: "项目" },
+        Paper: { en: "Paper", zh: "论文" },
+        Papers: { en: "Papers", zh: "论文" },
+        Topic: { en: "Topic", zh: "主题" },
+        Topics: { en: "Topics", zh: "主题" },
+        Domain: { en: "Domain", zh: "大领域" },
+        Domains: { en: "Domains", zh: "大领域" },
+        Seed: { en: "Seed", zh: "种子" },
+        "Code Repo": { en: "Code Repo", zh: "代码仓库" },
+        "Code Repos": { en: "Code Repos", zh: "代码仓库" },
+        Edges: { en: "Edges", zh: "关系" },
+        Favorites: { en: "Favorites", zh: "收藏" },
+        paper: { en: "paper", zh: "论文" },
+        seed: { en: "seed", zh: "种子" },
+        code_repo: { en: "code repo", zh: "代码仓库" },
+        local_pdf: { en: "local PDF", zh: "本地 PDF" },
+        topic: { en: "topic", zh: "主题" },
+        domain: { en: "domain", zh: "大领域" },
+        project: { en: "project", zh: "项目" },
+        has_topic: { en: "has topic", zh: "属于主题" },
+        has_domain: { en: "has domain", zh: "属于领域" },
+        contains: { en: "contains", zh: "包含" },
+        uses: { en: "uses", zh: "使用" },
+        related_work: { en: "related work", zh: "相关工作" },
+        inspiration: { en: "inspiration", zh: "启发" },
+        memory_reference: { en: "memory reference", zh: "记忆参考" },
+        co_occurs: { en: "co-occurs", zh: "共现" },
+      };
+
+      function loadArray(key) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function loadObject(key) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || "{}");
+          return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+        } catch {
+          return {};
+        }
+      }
+
+      function normalizeAddedNode(node) {
+        return {
+          ...node,
+          is_user_added: true,
+          index: 0,
+          x: 0,
+          y: 0,
+          z: 0,
+          vx: 0,
+          vy: 0,
+          vz: 0,
+        };
+      }
+
+      const storedAddedNodes = loadArray(storageKeys.addedNodes).map(normalizeAddedNode);
+      const storedAddedEdges = loadArray(storageKeys.addedEdges);
+      const state = {
+        nodes: graph.nodes
+          .map((node, index) => ({ ...node, index, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 }))
+          .concat(storedAddedNodes),
+        edges: [...(graph.edges || []), ...storedAddedEdges],
+        selected: null,
+        hovered: null,
+        dragging: null,
+        lang: loadLang(),
+        favorites: loadFavorites(),
+        favoriteCategories: loadObject(storageKeys.favoriteCategories),
+        exportSelection: loadSet(storageKeys.exportSelection),
+        hiddenNodes: loadSet(storageKeys.hidden),
+        pinnedNodes: loadSet(storageKeys.pinned),
+        addedNodes: storedAddedNodes,
+        addedEdges: storedAddedEdges,
+        favoritesOnly: false,
+        todayOnly: false,
+        localGraph: false,
+        viewFilter: "all",
+        paperQualityFilters: new Set(),
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0,
+        running: true,
+        spaceTilt: 0.64,
+        title: localStorage.getItem(storageKeys.title) || graph.project || "Paper Brain",
+        layerMode: ["auto", "domain", "topic", "detail"].includes(localStorage.getItem(storageKeys.topicDepth))
+          ? localStorage.getItem(storageKeys.topicDepth)
+          : "auto",
+        expandedNodeId: null,
+        searchSubmitted: "",
+        favoriteCategoryFilter: "all",
+      };
+      const nodeById = new Map(state.nodes.map((node) => [node.id, node]));
+      state.edges = state.edges
+        .map((edge) => ({ ...edge, sourceNode: nodeById.get(edge.source), targetNode: nodeById.get(edge.target) }))
+        .filter((edge) => edge.sourceNode && edge.targetNode);
+      refreshGraphMetrics();
+
+      function loadLang() {
+        const lang = localStorage.getItem(storageKeys.lang);
+        return lang === "en" || lang === "zh" ? lang : "zh";
+      }
+
+      function loadFavorites() {
+        return loadSet(storageKeys.favorites);
+      }
+
+      function loadSet(key) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+          return new Set(Array.isArray(parsed) ? parsed : []);
+        } catch {
+          return new Set();
+        }
+      }
+
+      function saveFavorites() {
+        localStorage.setItem(storageKeys.favorites, JSON.stringify([...state.favorites]));
+      }
+
+      function saveFavoriteCategories() {
+        localStorage.setItem(storageKeys.favoriteCategories, JSON.stringify(state.favoriteCategories));
+      }
+
+      function saveExportSelection() {
+        localStorage.setItem(storageKeys.exportSelection, JSON.stringify([...state.exportSelection]));
+      }
+
+      function saveGraphEdits() {
+        localStorage.setItem(storageKeys.hidden, JSON.stringify([...state.hiddenNodes]));
+        localStorage.setItem(storageKeys.pinned, JSON.stringify([...state.pinnedNodes]));
+        localStorage.setItem(storageKeys.addedNodes, JSON.stringify(state.addedNodes.map(stripRuntimeNode)));
+        localStorage.setItem(storageKeys.addedEdges, JSON.stringify(state.addedEdges.map(stripRuntimeEdge)));
+      }
+
+      function saveLayerMode() {
+        localStorage.setItem(storageKeys.topicDepth, state.layerMode);
+      }
+
+      function saveTitle() {
+        state.title = appTitleInput.value.trim() || graph.project || "Paper Brain";
+        localStorage.setItem(storageKeys.title, state.title);
+        appTitleInput.value = state.title;
+        document.title = state.title;
+      }
+
+      function refreshGraphMetrics() {
+        state.nodes.forEach((node) => {
+          node.degree = 0;
+          node.weightedDegree = 0;
+        });
+        state.edges.forEach((edge) => {
+          const weight = edge.weight || 1;
+          if (edge.sourceNode) {
+            edge.sourceNode.degree = (edge.sourceNode.degree || 0) + 1;
+            edge.sourceNode.weightedDegree = (edge.sourceNode.weightedDegree || 0) + weight;
+          }
+          if (edge.targetNode) {
+            edge.targetNode.degree = (edge.targetNode.degree || 0) + 1;
+            edge.targetNode.weightedDegree = (edge.targetNode.weightedDegree || 0) + weight;
+          }
+        });
+      }
+
+      function t(key, ...args) {
+        const value = i18n[state.lang][key] || i18n.en[key] || key;
+        return typeof value === "function" ? value(...args) : value;
+      }
+
+      function translateLabel(value) {
+        const entry = labelMap[value];
+        return entry ? entry[state.lang] : value;
+      }
+
+      function nodeId(prefix, label) {
+        const slug = String(label || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 70) || "node";
+        return `${prefix}:${slug}`;
+      }
+
+      function nodeType(node) {
+        if (!node) return "unknown";
+        if (node.kind === "project") return "project";
+        if (node.kind === "domain") return "domain";
+        if (node.kind === "topic") return "topic";
+        if (node.kind === "code_repo" || node.source === "github" || node.is_code_repo) return "code_repo";
+        if (node.source === "local_pdf") return "local_pdf";
+        if (node.kind === "seed") return "seed";
+        if (node.kind === "paper") return "paper";
+        return node.kind || "unknown";
+      }
+
+      function projectNode() {
+        return nodeById.get(defaultProjectNodeId) || state.nodes.find((node) => nodeType(node) === "project") || state.nodes[0] || null;
+      }
+
+      function nodeTypeLabel(node) {
+        const type = nodeType(node);
+        if (type === "local_pdf") return t("localPdf");
+        if (type === "code_repo") return t("codeRepo");
+        if (type === "domain") return t("domain");
+        return translateLabel(type);
+      }
+
+      function typeLabel(type) {
+        if (type === "local_pdf") return t("localPdf");
+        if (type === "code_repo") return t("codeRepo");
+        if (type === "domain") return t("domain");
+        return translateLabel(type);
+      }
+
+      function nodeColor(node) {
+        return colors[nodeType(node)] || "#667085";
+      }
+
+      function hexToRgba(hex, alpha) {
+        const clean = String(hex || "#ffffff").replace("#", "");
+        const value = clean.length === 3
+          ? clean.split("").map((ch) => ch + ch).join("")
+          : clean.padEnd(6, "f").slice(0, 6);
+        const number = Number.parseInt(value, 16);
+        const r = (number >> 16) & 255;
+        const g = (number >> 8) & 255;
+        const b = number & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+
+      function isFavoriteNode(node) {
+        return Boolean(node && canFavorite(node) && state.favorites.has(node.id));
+      }
+
+      function isTodayNode(node) {
+        return Boolean(node && canFavorite(node) && node.is_today_new);
+      }
+
+      function isPinnedNode(node) {
+        return Boolean(node && state.pinnedNodes.has(node.id));
+      }
+
+      function isHiddenNode(node) {
+        return Boolean(node && state.hiddenNodes.has(node.id));
+      }
+
+      function currentLayerMode() {
+        if (state.layerMode !== "auto") return state.layerMode;
+        if (hasExpandedBranch() && state.scale >= 0.72) return "detail";
+        if (state.scale < 0.72) return "domain";
+        if (state.scale < 1.28) return "topic";
+        return "detail";
+      }
+
+      function isNeighborOfSelected(node) {
+        if (!state.selected || !node) return false;
+        return state.edges.some(
+          (edge) =>
+            (edge.source === state.selected.id && edge.target === node.id) ||
+            (edge.target === state.selected.id && edge.source === node.id),
+        );
+      }
+
+      function isDirectNeighbor(a, b) {
+        if (!a || !b) return false;
+        return state.edges.some(
+          (edge) =>
+            (edge.source === a.id && edge.target === b.id) ||
+            (edge.target === a.id && edge.source === b.id),
+        );
+      }
+
+      function hasExpandedBranch() {
+        return Boolean(state.expandedNodeId && nodeById.has(state.expandedNodeId));
+      }
+
+      function isInExpandedBranch(node) {
+        if (!node || !hasExpandedBranch()) return false;
+        const root = nodeById.get(state.expandedNodeId);
+        if (!root) return false;
+        if (node.id === root.id) return true;
+        const rootType = nodeType(root);
+        const type = nodeType(node);
+        if (rootType === "domain") {
+          if (type === "project") return true;
+          if (node.parent_domain_id === root.id) return true;
+          return state.edges.some((edge) => {
+            const touchesRoot = edge.source === root.id || edge.target === root.id;
+            const touchesNode = edge.source === node.id || edge.target === node.id;
+            return touchesRoot && touchesNode;
+          });
+        }
+        if (rootType === "topic") {
+          if (node.parent_domain_id && node.parent_domain_id === root.parent_domain_id) return true;
+          return isDirectNeighbor(root, node);
+        }
+        return isDirectNeighbor(root, node);
+      }
+
+      function isInLocalGraph(node) {
+        if (!node || !state.localGraph || !state.selected) return true;
+        if (node.id === state.selected.id) return true;
+        const selectedType = nodeType(state.selected);
+        if (selectedType === "domain" && ["project", "domain"].includes(nodeType(node))) return true;
+        if (selectedType === "topic" && node.parent_domain_id && node.parent_domain_id === state.selected.parent_domain_id && nodeType(node) === "topic") return true;
+        return state.edges.some((edge) => {
+          const oneHop =
+            (edge.source === state.selected.id && edge.target === node.id) ||
+            (edge.target === state.selected.id && edge.source === node.id);
+          if (oneHop) return true;
+          if (selectedType !== "domain") return false;
+          const neighborId = edge.source === state.selected.id ? edge.target : edge.target === state.selected.id ? edge.source : null;
+          if (!neighborId) return false;
+          return state.edges.some(
+            (second) =>
+              (second.source === neighborId && second.target === node.id) ||
+              (second.target === neighborId && second.source === node.id),
+          ) && nodeType(node) !== "paper";
+        });
+      }
+
+      function isCollapsedByLayer(node) {
+        if (!node) return false;
+        if (state.localGraph && state.selected && !isInLocalGraph(node)) return true;
+        if (state.viewFilter !== "all") return false;
+        if ((state.favoritesOnly || state.todayOnly) && matchesTopFilter(node)) return false;
+        if (hasExpandedBranch() && currentLayerMode() === "detail" && !(search.value || "").trim()) {
+          if (["project", "domain"].includes(nodeType(node)) || isInExpandedBranch(node)) return false;
+          if (state.selected && (node.id === state.selected.id || isNeighborOfSelected(node))) return false;
+          return true;
+        }
+        if (state.selected && (node.id === state.selected.id || isNeighborOfSelected(node))) return false;
+        const type = nodeType(node);
+        const layer = currentLayerMode();
+        if (layer === "detail") return false;
+        if (layer === "domain") return !["project", "domain"].includes(type);
+        if (layer === "topic") return !["project", "domain", "topic"].includes(type);
+        return false;
+      }
+
+      function isVisibleNode(node) {
+        if ((search.value || "").trim() && matchesSearch(node)) return Boolean(node && !isHiddenNode(node));
+        if ((state.favoritesOnly || state.todayOnly) && matchesTopFilter(node)) return Boolean(node && !isHiddenNode(node));
+        return Boolean(node && !isHiddenNode(node) && !isCollapsedByLayer(node));
+      }
+
+      function canFavorite(node) {
+        return Boolean(node && ["paper", "seed", "local_pdf", "code_repo"].includes(nodeType(node)));
+      }
+
+      function favoriteCategory(node) {
+        if (!node || !canFavorite(node)) return "";
+        return String(state.favoriteCategories[node.id] || "").trim();
+      }
+
+      function favoriteCategoryNames() {
+        return [...new Set(
+          [...state.favorites]
+            .map((id) => favoriteCategory(nodeById.get(id)))
+            .filter(Boolean),
+        )].sort((a, b) => a.localeCompare(b));
+      }
+
+      function isExportSelectedNode(node) {
+        return Boolean(node && canFavorite(node) && state.exportSelection.has(node.id));
+      }
+
+      function matchesTopFilter(node) {
+        if (state.favoritesOnly) {
+          if (!isFavoriteNode(node)) return false;
+          if (state.favoriteCategoryFilter === "all") return true;
+          if (state.favoriteCategoryFilter === "__uncategorized") return !favoriteCategory(node);
+          return favoriteCategory(node) === state.favoriteCategoryFilter;
+        }
+        if (state.todayOnly) return isTodayNode(node);
+        return true;
+      }
+
+      function searchableText(node) {
+        const analysis = node.analysis || {};
+        const i18n = analysis.i18n || {};
+        const i18nText = ["en", "zh"].flatMap((lang) => {
+          const item = i18n[lang] || {};
+          return [
+            item.one_line,
+            ...(item.innovations || []),
+            ...(item.relevance || []),
+            ...(item.mechanisms || []),
+            ...(item.limitations || []),
+            ...(item.evidence_items || []),
+          ];
+        });
+        return [
+          node.label,
+          node.kind,
+          node.source,
+          node.parent_domain,
+          node.authors,
+          node.abstract,
+          node.description,
+          node.description_zh,
+          node.description_en,
+          analysis.one_line,
+          ...(analysis.topics || []),
+          ...(analysis.innovations || []),
+          ...(analysis.relevance || []),
+          ...(analysis.mechanisms || []),
+          ...i18nText,
+          ...(node.github_topics || []),
+          ...(node.venue_tags || []),
+          ...(node.lab_tags || []).map((tag) => `${tag.label || ""} ${tag.kind || ""}`),
+        ].filter(Boolean).join(" ").toLowerCase();
+      }
+
+      function matchesSearch(node) {
+        const q = (search.value || "").trim().toLowerCase();
+        if (!q) return true;
+        return searchableText(node).includes(q);
+      }
+
+      function matchesFilterValue(node, filterValue) {
+        const type = nodeType(node);
+        const filter = filterValue || "all";
+        return (
+          filter === "all" ||
+          (filter === "project" && type === "project") ||
+          (filter === "paper" && type === "paper") ||
+          (filter === "papers" && (type === "paper" || type === "seed")) ||
+          (filter === "seed" && type === "seed") ||
+          (filter === "code_repo" && type === "code_repo") ||
+          (filter === "domain" && type === "domain") ||
+          (filter === "topics" && type === "topic") ||
+          (filter === "local_pdf" && type === "local_pdf") ||
+          (filter === "deep_read" && isDeepReadNode(node)) ||
+          (filter === "needs_review" && needsReviewNode(node))
+        );
+      }
+
+      function matchesViewFilter(node) {
+        return matchesFilterValue(node, state.viewFilter);
+      }
+
+      function matchesPaperQualityFilter(node) {
+        if (!state.paperQualityFilters.size) return true;
+        if (!canFavorite(node)) return false;
+        if (state.paperQualityFilters.has("deep_read") && isDeepReadNode(node)) return true;
+        if (state.paperQualityFilters.has("needs_review") && needsReviewNode(node)) return true;
+        return false;
+      }
+
+      function isFocusActive() {
+        return Boolean((search.value || "").trim() || state.favoritesOnly || state.todayOnly || state.viewFilter !== "all" || state.paperQualityFilters.size);
+      }
+
+      function matchesVisualFocus(node) {
+        if (!node) return false;
+        if ((search.value || "").trim()) return matchesSearch(node);
+        const topOk = !(state.favoritesOnly || state.todayOnly) || matchesTopFilter(node);
+        const typeOk = state.viewFilter === "all" || matchesViewFilter(node);
+        const qualityOk = matchesPaperQualityFilter(node);
+        return topOk && typeOk && qualityOk;
+      }
+
+      function stripRuntimeNode(node) {
+        const {
+          index,
+          x,
+          y,
+          z,
+          vx,
+          vy,
+          vz,
+          sx,
+          sy,
+          sr,
+          depthScale,
+          degree,
+          weightedDegree,
+          anchorAngle,
+          is_user_added,
+          ...clean
+        } = node;
+        return clean;
+      }
+
+      function stripRuntimeEdge(edge) {
+        const { sourceNode, targetNode, ...clean } = edge;
+        return clean;
+      }
+
+      function rebuildNodeMaps() {
+        nodeById.clear();
+        state.nodes.forEach((node, index) => {
+          node.index = index;
+          nodeById.set(node.id, node);
+        });
+        state.edges = state.edges
+          .map((edge) => ({
+            ...stripRuntimeEdge(edge),
+            sourceNode: nodeById.get(edge.source),
+            targetNode: nodeById.get(edge.target),
+          }))
+          .filter((edge) => edge.sourceNode && edge.targetNode);
+        refreshGraphMetrics();
+      }
+
+      function isDeepReadNode(node) {
+        return Boolean(node && canFavorite(node) && node.quality_status === "deep_read");
+      }
+
+      function needsReviewNode(node) {
+        return Boolean(node && canFavorite(node) && node.quality_status !== "deep_read");
+      }
+
+      function qualityLabel(status) {
+        if (status === "deep_read") return t("qualityDeep");
+        if (status === "quick_checked") return t("qualityQuick");
+        if (status === "auto_imported") return t("qualityAuto");
+        return t("qualityNeeds");
+      }
+
+      function qualityClass(node) {
+        return `quality-${String(node?.quality_status || "needs_deep_read").replace(/[^a-z0-9_-]/gi, "_")}`;
+      }
+
+      function detailSection(title, content) {
+        if (!content) return "";
+        const body = Array.isArray(content)
+          ? `<ul>${content.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+          : `<div class="abstract">${escapeHtml(content)}</div>`;
+        return `<div class="section"><div class="section-title">${escapeHtml(title)}</div>${body}</div>`;
+      }
+
+      function badgeRow(items) {
+        const clean = (items || []).filter(Boolean).slice(0, 12);
+        if (!clean.length) return "";
+        return `<div class="badge-row">${clean.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("")}</div>`;
+      }
+
+      function qualityBadge(node) {
+        if (!canFavorite(node)) return "";
+        return `<span class="quality-pill ${escapeAttr(qualityClass(node))}">${escapeHtml(qualityLabel(node.quality_status))} · ${escapeHtml(String(node.quality_score ?? 0))}</span>`;
+      }
+
+      function localizedAnalysis(node) {
+        const analysis = node.analysis || {};
+        const i18n = analysis.i18n || {};
+        const localized = i18n[state.lang] || i18n.en || {};
+        return { ...analysis, ...localized };
+      }
+
+      function localizedDeepReadPath(node) {
+        const paths = node.deep_read_paths || {};
+        if (paths && typeof paths === "object" && paths[state.lang]) return paths[state.lang];
+        if (paths && typeof paths === "object" && paths.en) return paths.en;
+        return node.deep_read_path;
+      }
+
+      function qualitySection(node) {
+        if (!canFavorite(node)) return "";
+        const gaps = (node.quality_gaps || []).length ? node.quality_gaps : ["N/A"];
+        const notePath = localizedDeepReadPath(node);
+        const note = notePath
+          ? `<div class="meta"><a href="${escapeAttr(resolveUrl(notePath))}" target="_blank" rel="noreferrer">${escapeHtml(t("deepReadNote"))}</a></div>`
+          : "";
+        const warning = node.quality_status === "deep_read" ? "" : `<div class="abstract quality-warning">${escapeHtml(t("qualityWarning"))}</div>`;
+        return `
+          <div class="section quality-box ${escapeAttr(qualityClass(node))}">
+            <div class="section-title">${escapeHtml(t("qualityStatus"))}</div>
+            <div class="meta">${qualityBadge(node)} · ${escapeHtml(t("qualityGaps"))}: ${escapeHtml(gaps.join(", "))}</div>
+            <div class="meta">${escapeHtml(String(node.evidence_count || 0))}/${escapeHtml(String(node.min_evidence || 4))} evidence · ${node.figure_verified ? "figure verified" : "figure pending"}</div>
+            ${note}
+            ${warning}
+          </div>
+        `;
+      }
+
+      function signalTags(node) {
+        const tags = [];
+        (node.venue_tags || []).forEach((tag) => tags.push(String(tag)));
+        (node.lab_tags || []).forEach((lab) => tags.push(lab.kind ? `${lab.label} · ${lab.kind}` : lab.label));
+        if (!tags.length) return "";
+        return `<div class="tag-row">${tags.map((tag) => `<span class="signal-tag">${escapeHtml(tag)}</span>`).join("")}</div>`;
+      }
+
+      function figureSection(node) {
+        const figures = (node.figure_previews || []).filter((figure) => figure && figure.src).slice(0, 3);
+        if (!figures.length) {
+          const errors = (node.figure_preview_errors || []).map((error) => `${error.stage || "figure"}: ${error.message || error}`);
+          return detailSection(t("importantFigures"), t("noFigures")) + detailSection(t("figureErrors"), errors);
+        }
+        const body = figures.map((figure) => `
+          <figure>
+            <a href="${escapeAttr(resolveAssetUrl(figure.src))}" target="_blank" rel="noreferrer">
+              <img src="${escapeAttr(resolveAssetUrl(figure.src))}" alt="${escapeAttr(figure.caption || t("importantFigures"))}" loading="lazy" onerror="this.closest('figure').classList.add('image-missing')" />
+            </a>
+            <figcaption>${escapeHtml(figure.caption || `${t("pdf")} ${figure.page || ""}`)}${figure.needs_verification ? ` · ${escapeHtml(t("figureNeedsVerification"))}` : ""}</figcaption>
+          </figure>
+        `).join("");
+        return `<div class="section"><div class="section-title">${escapeHtml(t("importantFigures"))}</div><div class="figure-grid">${body}</div></div>`;
+      }
+
+      function nodeDescription(node) {
+        return state.lang === "zh"
+          ? (node.description_zh || node.description || "")
+          : (node.description_en || node.description || "");
+      }
+
+      function neighborItems(node, mode) {
+        return state.edges
+          .filter((edge) => edge.source === node.id || edge.target === node.id)
+          .map((edge) => {
+            const other = edge.source === node.id ? edge.targetNode : edge.sourceNode;
+            return { edge, other };
+          })
+          .filter(({ other }) => {
+            if (!isVisibleNode(other) && other.id !== state.selected?.id) return false;
+            if (mode === "papers") return canFavorite(other);
+            return true;
+          })
+          .sort((a, b) => (b.other.score || 0) - (a.other.score || 0));
+      }
+
+      function nodeTypeClass(node) {
+        return nodeType(node).replace(/[^a-z0-9_-]/gi, "_");
+      }
+
+      function nodeMini(node) {
+        return `<span class="node-mini node-mini-${escapeAttr(nodeTypeClass(node))}"></span>`;
+      }
+
+      function itemCard(node, meta, extraClass = "") {
+        const today = isTodayNode(node) ? `<span class="inline-tag">${escapeHtml(t("todayTag"))}</span>` : "";
+        const favorite = isFavoriteNode(node) ? "★ " : "";
+        const quality = canFavorite(node) ? qualityBadge(node) : "";
+        return `
+          <div class="item item-${escapeAttr(nodeTypeClass(node))} ${isTodayNode(node) ? "item-today" : ""} ${extraClass}" data-node="${escapeAttr(node.id)}">
+            <div class="item-title">${nodeMini(node)}<span>${favorite}${escapeHtml(node.label)}${today}</span></div>
+            <div class="item-meta">${escapeHtml(meta)} ${quality}</div>
+          </div>`;
+      }
+
+      function neighborListHtml(node, mode) {
+        const groups = new Map();
+        neighborItems(node, mode).forEach(({ edge, other }) => {
+          const type = nodeType(other);
+          if (!groups.has(type)) groups.set(type, []);
+          groups.get(type).push({ edge, other });
+        });
+        const order = ["paper", "local_pdf", "seed", "code_repo", "topic", "domain", "project"];
+        const sortedTypes = [...groups.keys()].sort((a, b) => {
+          const ai = order.includes(a) ? order.indexOf(a) : 99;
+          const bi = order.includes(b) ? order.indexOf(b) : 99;
+          return ai - bi || a.localeCompare(b);
+        });
+        return sortedTypes
+          .map((type) => {
+            const items = groups.get(type).slice(0, 8).map(({ edge, other }) => {
+              const meta = `${translateLabel(edge.relation)} · ${nodeTypeLabel(other)}${other.priority ? " · " + other.priority : ""}${other.score ? " · score " + other.score : ""}`;
+              return itemCard(other, meta);
+            }).join("");
+            return `<div class="neighbor-group"><div class="neighbor-group-title">${escapeHtml(typeLabel(type))}</div>${items}</div>`;
+          })
+          .join("");
+      }
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.max(320, rect.width) * ratio;
+        canvas.height = Math.max(320, rect.height) * ratio;
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      }
+
+      function initLayout() {
+        const rect = canvas.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        state.nodes.forEach((node, index) => {
+          const angle = (index / Math.max(1, state.nodes.length)) * Math.PI * 2;
+          const type = nodeType(node);
+          const ring = type === "project" ? 0 : type === "domain" ? 150 : 120 + (index % 9) * 28;
+          node.x = cx + Math.cos(angle) * ring;
+          node.y = cy + Math.sin(angle) * ring;
+          node.z = type === "project" ? 90 : type === "domain" ? 45 : ((index * 37) % 260) - 130;
+          node.anchorAngle = angle;
+        });
+      }
+
+      function radius(node) {
+        const type = nodeType(node);
+        const hub = Math.min(7, Math.log2((node.degree || 0) + 1) * 1.45);
+        const score = Math.min(4, Math.max(0, node.score || 0) / 8);
+        if (type === "project") return 18;
+        if (type === "domain") return 14 + hub * 0.72;
+        if (type === "topic") return 7.5 + hub + score * 0.35;
+        if (type === "local_pdf") return 9.5 + Math.min(4, score);
+        if (type === "code_repo") return 8.5 + Math.min(5.5, Math.log10((node.stars || 0) + 10) * 1.55) + hub * 0.22;
+        if (type === "seed") return 10.5 + hub * 0.28;
+        return 4.8 + Math.min(5.5, score) + hub * 0.32;
+      }
+
+      function projectNode(node, rect) {
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const z = node.z || 0;
+        const depthScale = 0.9 + ((z + 160) / 360) * 0.18;
+        node.depthScale = Math.max(0.82, Math.min(1.12, depthScale));
+        node.sx = cx + (node.x - cx) * node.depthScale;
+        node.sy = cy + (node.y - cy) * state.spaceTilt * node.depthScale + z * 0.12;
+        node.sr = radius(node) * node.depthScale;
+      }
+
+      function drawNodeShape(node, r) {
+        const type = nodeType(node);
+        const x = node.sx ?? node.x;
+        const y = node.sy ?? node.y;
+        ctx.beginPath();
+        if (type === "project") {
+          ctx.rect(x - r, y - r, r * 2, r * 2);
+          ctx.fill();
+        } else if (type === "domain") {
+          for (let i = 0; i < 6; i += 1) {
+            const angle = -Math.PI / 2 + (Math.PI * 2 * i) / 6;
+            const px = x + Math.cos(angle) * r;
+            const py = y + Math.sin(angle) * r;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "rgba(245, 245, 247, 0.58)";
+          ctx.lineWidth = 1.1;
+          ctx.stroke();
+        } else if (type === "topic") {
+          ctx.lineWidth = Math.max(1.2, r * 0.16);
+          ctx.strokeStyle = nodeColor(node);
+          ctx.beginPath();
+          ctx.moveTo(x - r * 0.52, y + r * 0.18);
+          ctx.lineTo(x, y - r * 0.4);
+          ctx.lineTo(x + r * 0.58, y + r * 0.2);
+          ctx.stroke();
+          [[x - r * 0.52, y + r * 0.18], [x, y - r * 0.4], [x + r * 0.58, y + r * 0.2]].forEach(([px, py]) => {
+            ctx.beginPath();
+            ctx.arc(px, py, r * 0.34, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        } else if (type === "seed") {
+          ctx.moveTo(x, y - r);
+          ctx.lineTo(x + r, y);
+          ctx.lineTo(x, y + r);
+          ctx.lineTo(x - r, y);
+          ctx.closePath();
+          ctx.fill();
+        } else if (type === "local_pdf") {
+          const w = r * 1.45;
+          const h = r * 1.85;
+          ctx.moveTo(x - w / 2, y - h / 2);
+          ctx.lineTo(x + w / 2 - 5, y - h / 2);
+          ctx.lineTo(x + w / 2, y - h / 2 + 5);
+          ctx.lineTo(x + w / 2, y + h / 2);
+          ctx.lineTo(x - w / 2, y + h / 2);
+          ctx.closePath();
+          ctx.fill();
+        } else if (type === "code_repo") {
+          ctx.moveTo(x - r * 0.95, y - r * 0.42);
+          ctx.lineTo(x - r * 0.32, y - r * 0.42);
+          ctx.lineTo(x - r * 0.14, y - r * 0.72);
+          ctx.lineTo(x + r * 0.94, y - r * 0.72);
+          ctx.lineTo(x + r * 0.94, y + r * 0.72);
+          ctx.lineTo(x - r * 0.95, y + r * 0.72);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function isHighlighted(node) {
+        if (isFocusActive()) {
+          if (matchesVisualFocus(node)) return true;
+          return Boolean(state.selected && node.id === state.selected.id);
+        }
+        if (!state.selected) return true;
+        if (node.id === state.selected.id) return true;
+        return state.edges.some(
+          (edge) =>
+            (edge.source === state.selected.id && edge.target === node.id) ||
+            (edge.target === state.selected.id && edge.source === node.id),
+        );
+      }
+
+      function expandForNode(node) {
+        const type = nodeType(node);
+        if (type === "domain" || type === "topic") {
+          state.expandedNodeId = node.id;
+          state.layerMode = "auto";
+          saveLayerMode();
+        } else if (type === "project" && !state.localGraph) {
+          state.expandedNodeId = null;
+        }
+      }
+
+      function tick() {
+        const rect = canvas.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const nodes = state.nodes.filter(isVisibleNode);
+
+        for (let i = 0; i < nodes.length; i += 1) {
+          for (let j = i + 1; j < nodes.length; j += 1) {
+            const a = nodes[i];
+            const b = nodes[j];
+            let dx = b.x - a.x;
+            let dy = b.y - a.y;
+            let dz = (b.z || 0) - (a.z || 0);
+            let dist2 = dx * dx + dy * dy + dz * dz * 0.45 + 0.01;
+            const force = Math.min(900, 5200 / dist2);
+            const dist = Math.sqrt(dist2);
+            dx /= dist;
+            dy /= dist;
+            dz /= dist;
+            if (a !== state.dragging) {
+              a.vx -= dx * force;
+              a.vy -= dy * force;
+              a.vz -= dz * force * 0.22;
+            }
+            if (b !== state.dragging) {
+              b.vx += dx * force;
+              b.vy += dy * force;
+              b.vz += dz * force * 0.22;
+            }
+          }
+        }
+
+        state.edges.forEach((edge) => {
+          const a = edge.sourceNode;
+          const b = edge.targetNode;
+          if (!isVisibleNode(a) || !isVisibleNode(b)) return;
+          let dx = b.x - a.x;
+          let dy = b.y - a.y;
+          let dz = (b.z || 0) - (a.z || 0);
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz * 0.45) || 1;
+          const desired = edge.relation === "co_occurs" ? 145 : 105;
+          const force = (dist - desired) * 0.006 * (edge.weight || 1);
+          dx /= dist;
+          dy /= dist;
+          dz /= dist;
+          if (a !== state.dragging) {
+            a.vx += dx * force;
+            a.vy += dy * force;
+            a.vz += dz * force * 0.2;
+          }
+          if (b !== state.dragging) {
+            b.vx -= dx * force;
+            b.vy -= dy * force;
+            b.vz -= dz * force * 0.2;
+          }
+        });
+
+        nodes.forEach((node) => {
+          const type = nodeType(node);
+          let anchor = null;
+          if (type === "domain") {
+            const angle = node.anchorAngle || 0;
+            anchor = {
+              x: cx + Math.cos(angle) * Math.min(rect.width, rect.height) * 0.26,
+              y: cy + Math.sin(angle) * Math.min(rect.width, rect.height) * 0.2,
+              z: 46,
+              force: 0.0035,
+            };
+          } else if (type === "topic" && node.parent_domain_id && nodeById.has(node.parent_domain_id)) {
+            const parent = nodeById.get(node.parent_domain_id);
+            const angle = node.anchorAngle || 0;
+            anchor = {
+              x: parent.x + Math.cos(angle) * 78,
+              y: parent.y + Math.sin(angle) * 64,
+              z: (parent.z || 0) - 18,
+              force: 0.0045,
+            };
+          } else if (canFavorite(node)) {
+            const topicEdge = state.edges.find((edge) => edge.relation === "has_topic" && (edge.source === node.id || edge.target === node.id));
+            const domainEdge = state.edges.find((edge) => edge.relation === "has_domain" && (edge.source === node.id || edge.target === node.id));
+            const parentId = topicEdge
+              ? (topicEdge.source === node.id ? topicEdge.target : topicEdge.source)
+              : domainEdge
+                ? (domainEdge.source === node.id ? domainEdge.target : domainEdge.source)
+                : null;
+            const parent = parentId ? nodeById.get(parentId) : null;
+            if (parent) {
+              const angle = node.anchorAngle || 0;
+              anchor = {
+                x: parent.x + Math.cos(angle) * (95 + Math.min(70, (node.degree || 0) * 7)),
+                y: parent.y + Math.sin(angle) * (76 + Math.min(54, (node.degree || 0) * 5)),
+                z: (parent.z || 0) - 36 + ((node.index || 0) % 7) * 9,
+                force: 0.003,
+              };
+            }
+          }
+          if (anchor && node !== state.dragging) {
+            node.vx += (anchor.x - node.x) * anchor.force;
+            node.vy += (anchor.y - node.y) * anchor.force;
+            node.vz += (anchor.z - (node.z || 0)) * anchor.force;
+          }
+        });
+
+        nodes.forEach((node) => {
+          if (node.kind === "project") {
+            node.vx += (cx - node.x) * 0.012;
+            node.vy += (cy - node.y) * 0.012;
+            node.vz += (90 - (node.z || 0)) * 0.01;
+          } else {
+            node.vx += (cx - node.x) * 0.0008;
+            node.vy += (cy - node.y) * 0.0008;
+            node.vz += (0 - (node.z || 0)) * 0.0007;
+          }
+          if (node !== state.dragging) {
+            node.x += node.vx;
+            node.y += node.vy;
+            node.z = Math.max(-170, Math.min(170, (node.z || 0) + node.vz));
+          }
+          node.vx *= 0.82;
+          node.vy *= 0.82;
+          node.vz *= 0.84;
+        });
+      }
+
+      function drawBackdrop(rect) {
+        const time = performance.now() * 0.001;
+        ctx.save();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        ctx.fillStyle = "#050506";
+        ctx.fillRect(0, 0, rect.width, rect.height);
+
+        const sheen = ctx.createLinearGradient(0, 0, rect.width, rect.height);
+        sheen.addColorStop(0, "rgba(220, 240, 255, 0.035)");
+        sheen.addColorStop(0.44, "rgba(168, 217, 255, 0.05)");
+        sheen.addColorStop(1, "rgba(5, 5, 6, 0)");
+        ctx.fillStyle = sheen;
+        ctx.fillRect(0, 0, rect.width, rect.height);
+
+        ctx.strokeStyle = "rgba(168, 217, 255, 0.08)";
+        ctx.lineWidth = 1;
+        const horizon = rect.height * 0.56;
+        for (let i = -12; i <= 12; i += 1) {
+          const x = cx + i * 72 * state.scale + Math.sin(time * 0.35 + i) * 8;
+          ctx.beginPath();
+          ctx.moveTo(cx, horizon);
+          ctx.lineTo(x, rect.height);
+          ctx.stroke();
+        }
+        for (let i = 0; i < 15; i += 1) {
+          const y = horizon + Math.pow(i / 14, 1.85) * (rect.height - horizon);
+          const alpha = 0.025 + i * 0.004;
+          ctx.strokeStyle = `rgba(168, 217, 255, ${alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(rect.width, y);
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = "rgba(168, 217, 255, 0.13)";
+        ctx.beginPath();
+        ctx.moveTo(cx, horizon - 28);
+        ctx.lineTo(cx - rect.width * 0.32, rect.height * 0.9);
+        ctx.moveTo(cx, horizon - 28);
+        ctx.lineTo(cx + rect.width * 0.32, rect.height * 0.9);
+        ctx.moveTo(cx, horizon - 28);
+        ctx.lineTo(cx, rect.height * 0.92);
+        ctx.stroke();
+
+        for (let ring = 0; ring < 4; ring += 1) {
+          ctx.strokeStyle = `rgba(213, 221, 231, ${0.105 - ring * 0.018})`;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy + ring * 26, 170 + ring * 62, 42 + ring * 18, Math.sin(time * 0.18) * 0.08, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        for (let i = 0; i < 190; i += 1) {
+          const z = ((i * 53) % 360) - 180;
+          const depth = 0.72 + ((z + 180) / 360) * 0.52;
+          const x = cx + Math.sin(i * 12.989 + time * 0.18) * rect.width * 0.46 * depth;
+          const y = cy + Math.cos(i * 7.233 + time * 0.13) * rect.height * 0.36 * depth + z * 0.08;
+          const size = (i % 9 === 0 ? 2.1 : 1.1) * depth;
+          const alpha = 0.035 + ((i % 11) / 11) * 0.11;
+          ctx.fillStyle = i % 9 === 0 ? `rgba(159, 217, 189, ${alpha * 0.75})` : i % 5 === 0 ? `rgba(168, 217, 255, ${alpha})` : `rgba(235, 240, 246, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(x, y, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function draw() {
+        const rect = canvas.getBoundingClientRect();
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        drawBackdrop(rect);
+        state.nodes.forEach((node) => projectNode(node, rect));
+        ctx.save();
+        ctx.translate(state.offsetX, state.offsetY);
+        ctx.scale(state.scale, state.scale);
+
+        state.edges.forEach((edge) => {
+          const a = edge.sourceNode;
+          const b = edge.targetNode;
+          if (!isVisibleNode(a) || !isVisibleNode(b)) return;
+          const localActive = state.selected && (a.id === state.selected.id || b.id === state.selected.id || (state.localGraph && isInLocalGraph(a) && isInLocalGraph(b)));
+          const active = isFocusActive()
+            ? (matchesVisualFocus(a) || matchesVisualFocus(b) || localActive)
+            : (!state.selected || localActive);
+          const depth = Math.max(0.22, Math.min(1, ((a.depthScale || 1) + (b.depthScale || 1)) / 2));
+          const relationBoost = edge.relation === "contains" || edge.relation === "has_topic" || edge.relation === "has_domain" ? 0.055 : 0;
+          const alpha = active ? 0.11 + depth * 0.22 + relationBoost : 0.026;
+          const hue = edge.relation === "contains" ? "159, 217, 189" : edge.relation === "has_domain" ? "213, 221, 231" : "168, 217, 255";
+          ctx.strokeStyle = `rgba(${hue}, ${alpha})`;
+          ctx.lineWidth = active ? Math.min(1.55, 0.38 + (edge.weight || 1) * 0.28) : 0.32;
+          const midX = (a.sx + b.sx) / 2;
+          const midY = (a.sy + b.sy) / 2 - Math.abs((a.z || 0) - (b.z || 0)) * 0.08 - 10;
+          ctx.beginPath();
+          ctx.moveTo(a.sx, a.sy);
+          ctx.quadraticCurveTo(midX, midY, b.sx, b.sy);
+          ctx.stroke();
+        });
+
+        [...state.nodes].sort((a, b) => (a.z || 0) - (b.z || 0)).forEach((node) => {
+          if (!isVisibleNode(node)) return;
+          const active = isHighlighted(node);
+          const r = node.sr || radius(node);
+          const depth = node.depthScale || 1;
+          ctx.globalAlpha = active ? 1 : 0.13;
+          ctx.fillStyle = nodeColor(node);
+          ctx.shadowColor = nodeColor(node);
+          const topFilterHit = matchesTopFilter(node) && (state.todayOnly || state.favoritesOnly);
+          ctx.shadowBlur = active ? (topFilterHit ? 24 : 18) * depth : 0;
+          if (active && (node.degree || 0) >= 6) {
+            const halo = Math.min(46, r * (1.75 + Math.log2((node.degree || 0) + 1) * 0.22));
+            const gradient = ctx.createRadialGradient(node.sx, node.sy, r * 0.7, node.sx, node.sy, halo);
+            gradient.addColorStop(0, hexToRgba(nodeColor(node), 0.22));
+            gradient.addColorStop(1, hexToRgba(nodeColor(node), 0));
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, halo, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = nodeColor(node);
+          }
+          drawNodeShape(node, r);
+          if (active && (nodeType(node) === "domain" || nodeType(node) === "project")) {
+            ctx.strokeStyle = `rgba(245, 245, 247, ${0.13 * depth})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, r * 1.9, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.shadowBlur = 0;
+          if (topFilterHit && node !== state.selected) {
+            ctx.strokeStyle = state.todayOnly ? "rgba(159, 217, 189, 0.22)" : "rgba(168, 217, 255, 0.2)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, r * 1.85, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = state.todayOnly ? "rgba(159, 217, 189, 0.92)" : "rgba(168, 217, 255, 0.92)";
+            ctx.lineWidth = 2.1;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, r * 1.2, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          if (node === state.selected) {
+            ctx.strokeStyle = "rgba(245, 245, 247, 0.92)";
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, r * 1.35, 0, Math.PI * 2);
+            ctx.stroke();
+          } else if (canFavorite(node) && node.quality_status === "deep_read") {
+            ctx.strokeStyle = active ? "rgba(168, 217, 255, 0.96)" : "rgba(168, 217, 255, 0.52)";
+            ctx.lineWidth = active ? 2.3 : 1.5;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, r * 1.36, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = active ? "rgba(245, 245, 247, 0.58)" : "rgba(245, 245, 247, 0.24)";
+            ctx.lineWidth = 0.9;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, r * 0.68, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = active ? "rgba(168, 217, 255, 0.22)" : "rgba(168, 217, 255, 0.08)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, r * 1.72, 0, Math.PI * 2);
+            ctx.stroke();
+          } else if (canFavorite(node) && node.quality_status !== "deep_read") {
+            ctx.strokeStyle = "rgba(240, 185, 173, 0.28)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(node.sx, node.sy, r * 1.18, 0, Math.PI * 2);
+            ctx.stroke();
+          } else if (isTodayNode(node)) {
+            ctx.strokeStyle = "rgba(159, 217, 189, 0.9)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            if (active) {
+              ctx.strokeStyle = "rgba(159, 217, 189, 0.18)";
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.arc(node.sx, node.sy, r * 1.75, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          } else if (isFavoriteNode(node) || isPinnedNode(node)) {
+            ctx.strokeStyle = isPinnedNode(node) ? "#aac8ff" : "#a8d9ff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          const showLabel =
+            node.kind === "project" ||
+            node.kind === "domain" ||
+            node.kind === "topic" ||
+            node === state.selected ||
+            node === state.hovered ||
+            (node.score || 0) > 18;
+          if (showLabel) {
+            ctx.globalAlpha = active ? 1 : 0.35;
+            ctx.fillStyle = "#f5f5f7";
+            ctx.font = node.kind === "project" || node.kind === "domain" ? "700 14px Inter, sans-serif" : "600 11px Inter, sans-serif";
+            ctx.textAlign = "center";
+            const label = node.label.length > 38 ? node.label.slice(0, 36) + "..." : node.label;
+            ctx.fillText(label, node.sx, node.sy - r - 7);
+          }
+        });
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+
+      function animate() {
+        if (state.running) tick();
+        draw();
+        requestAnimationFrame(animate);
+      }
+
+      function toGraphPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (event.clientX - rect.left - state.offsetX) / state.scale,
+          y: (event.clientY - rect.top - state.offsetY) / state.scale,
+        };
+      }
+
+      function pickNode(event) {
+        const p = toGraphPoint(event);
+        let best = null;
+        let bestDist = Infinity;
+        state.nodes.forEach((node) => {
+          if (!isVisibleNode(node)) return;
+          const dx = (node.sx ?? node.x) - p.x;
+          const dy = (node.sy ?? node.y) - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < (node.sr || radius(node)) + 10 && dist < bestDist) {
+            best = node;
+            bestDist = dist;
+          }
+        });
+        return best;
+      }
+
+      function showNode(node) {
+        state.selected = node;
+        if (node && state.localGraph) {
+          state.expandedNodeId = node.id;
+        }
+        if (node) expandForNode(node);
+        updateChrome();
+        if (!node) {
+          detail.innerHTML = `<h2>${escapeHtml(t("clickNode"))}</h2>`;
+          renderResults(search.value);
+          return;
+        }
+        const type = nodeType(node);
+        const neighborMode = type === "topic" ? "papers" : "all";
+        const neighbors = neighborListHtml(node, neighborMode);
+        const link = node.url ? `<a href="${escapeAttr(resolveUrl(node.url))}" target="_blank" rel="noreferrer">${escapeHtml(t("open"))}</a>` : "";
+        const pdf = node.pdf_url ? ` · <a href="${escapeAttr(node.pdf_url)}" target="_blank" rel="noreferrer">${escapeHtml(t("pdf"))}</a>` : "";
+        const localText = node.text_cache_path ? ` · <a href="${escapeAttr(resolveUrl(node.text_cache_path))}" target="_blank" rel="noreferrer">${escapeHtml(t("fulltext"))}</a>` : "";
+        const citationMeta = node.citation_count
+          ? ` · ${escapeHtml(t("citations"))} ${escapeHtml(String(node.citation_count))}${node.reference_count ? " · " + escapeHtml(t("references")) + " " + escapeHtml(String(node.reference_count)) : ""}`
+          : "";
+        const favoriteButton = canFavorite(node)
+          ? `<button id="favoriteNodeBtn" type="button" class="${isFavoriteNode(node) ? "favorite-active" : ""}">${escapeHtml(isFavoriteNode(node) ? t("unfavorite") : t("favorite"))}</button>`
+          : "";
+        const exportButton = canFavorite(node)
+          ? `<button id="exportSelectNodeBtn" type="button" class="${isExportSelectedNode(node) ? "favorite-active" : ""}">${escapeHtml(isExportSelectedNode(node) ? t("removeFromExport") : t("addToExport"))}</button>`
+          : "";
+        const analysis = localizedAnalysis(node);
+        const nodeHint = type === "project" ? t("projectNodeHint") : type === "code_repo" ? t("codeRepoNodeHint") : t("paperNodeHint");
+        const basicInfo = [
+          `${t("nodeTypeHint")}: ${nodeTypeLabel(node)}`,
+          isTodayNode(node) ? `${t("todayTag")}: yes` : "",
+          node.parent_domain ? `${t("domain")}: ${node.parent_domain}` : "",
+          node.source ? `Source: ${node.source}` : "",
+          node.language ? `${t("language")}: ${node.language}` : "",
+          node.stars !== undefined ? `${t("stars")}: ${node.stars}` : "",
+          node.forks !== undefined ? `${t("forks")}: ${node.forks}` : "",
+          node.year ? `Year: ${node.year}` : "",
+          node.priority ? `Priority: ${node.priority}` : "",
+          node.score ? `Score: ${node.score}` : "",
+          node.quality_status ? `${t("qualityStatus")}: ${qualityLabel(node.quality_status)} (${node.quality_score || 0})` : "",
+        ].filter(Boolean);
+        const detailBody = canFavorite(node)
+          ? [
+              signalTags(node),
+              qualitySection(node),
+              figureSection(node),
+              detailSection(t("basicInfo"), basicInfo),
+              badgeRow((analysis.topics || node.github_topics || []).length ? (analysis.topics || node.github_topics) : []),
+              detailSection(t("summary"), analysis.one_line || node.abstract),
+              detailSection(t("evidenceItems"), analysis.evidence_items || []),
+              detailSection(t("verifiedFigureNotes"), (analysis.verified_figures || []).length ? analysis.verified_figures : (analysis.figure_notes || [])),
+              detailSection(t("innovations"), analysis.innovations || []),
+              detailSection(t("relevance"), analysis.relevance || []),
+              detailSection(t("mechanisms"), analysis.mechanisms || []),
+              detailSection(t("limitations"), analysis.limitations || []),
+              detailSection(t("readingQuestions"), analysis.questions || []),
+            ].join("")
+          : [
+              signalTags(node),
+              detailSection(t("basicInfo"), basicInfo),
+              nodeDescription(node) ? detailSection(t("domainIntro"), nodeDescription(node)) : "",
+              type === "topic" ? detailSection(t("summary"), t("topicNodeHint")) : "",
+              type === "domain" ? detailSection(t("summary"), t("domainNodeHint")) : "",
+              type !== "topic" && type !== "domain" ? `<div class="abstract">${escapeHtml(nodeHint)}</div>` : "",
+            ].join("");
+        detail.innerHTML = `
+          <h2>${escapeHtml(node.label)}</h2>
+          <div class="meta"><span class="type-pill">${escapeHtml(nodeTypeLabel(node))}</span>${node.source ? " · " + escapeHtml(node.source) : ""}${node.priority ? " · " + escapeHtml(node.priority) : ""}${node.score ? " · score " + escapeHtml(String(node.score)) : ""}${citationMeta}${link ? " · " + link + pdf + localText : ""}</div>
+          ${node.authors ? `<div class="meta">${escapeHtml(node.authors)}</div>` : ""}
+          ${favoriteButton ? `<div class="controls" style="grid-template-columns: 1fr 1fr; margin-top: 12px;">${favoriteButton}${exportButton}</div>` : ""}
+          ${detailBody}
+          <div class="meta" style="margin-top: 14px; font-weight: 700;">${escapeHtml(type === "topic" ? t("relatedPapers") : t("neighbors"))}</div>
+          <div class="list">${neighbors}</div>
+        `;
+        const favoriteNodeBtn = document.getElementById("favoriteNodeBtn");
+        if (favoriteNodeBtn) {
+          favoriteNodeBtn.addEventListener("click", () => toggleFavorite(node));
+        }
+        const exportSelectNodeBtn = document.getElementById("exportSelectNodeBtn");
+        if (exportSelectNodeBtn) {
+          exportSelectNodeBtn.addEventListener("click", () => toggleExportSelection(node));
+        }
+        detail.querySelectorAll("[data-node]").forEach((el) => {
+          el.addEventListener("click", () => showNode(nodeById.get(el.dataset.node)));
+        });
+        renderResults(search.value);
+      }
+
+      function matchingResultNodes(query) {
+        const q = (query || "").trim().toLowerCase();
+        const searchMode = Boolean(q);
+        const related = !searchMode && state.selected
+          ? new Set(
+              state.edges
+                .filter((edge) => edge.source === state.selected.id || edge.target === state.selected.id)
+                .map((edge) => (edge.source === state.selected.id ? edge.target : edge.source)),
+            )
+          : null;
+        return state.nodes
+          .filter((node) => {
+            const visibleOk = searchMode ? !isHiddenNode(node) : (isVisibleNode(node) || state.viewFilter === "topics");
+            return visibleOk && matchesViewFilter(node) && matchesTopFilter(node) && matchesPaperQualityFilter(node) && (!searchMode || searchableText(node).includes(q)) && (!related || related.has(node.id) || node.id === state.selected.id);
+          })
+          .sort((a, b) => (b.score || 0) - (a.score || 0))
+          .slice(0, 18);
+      }
+
+      function updateSearchStatus(matches, query, submitted = false) {
+        const clean = (query || "").trim();
+        searchStatus.classList.remove("search-hit", "search-miss");
+        if (!clean) {
+          searchStatus.textContent = "";
+        } else if (matches.length) {
+          searchStatus.textContent = submitted ? t("searchResults", matches.length, clean) : `${matches.length}`;
+          searchStatus.classList.add("search-hit");
+        } else {
+          searchStatus.textContent = t("searchNoResults", clean);
+          searchStatus.classList.add("search-miss");
+        }
+      }
+
+      function renderResults(query, options = {}) {
+        const matches = matchingResultNodes(query);
+        results.innerHTML = matches
+          .map((node) => itemCard(node, `${nodeTypeLabel(node)}${node.source ? " · " + node.source : ""}${node.priority ? " · " + node.priority : ""}${node.score ? " · " + node.score : ""}`, state.selected && node.id === state.selected.id ? "item-selected" : ""))
+          .join("");
+        if (!matches.length && state.favoritesOnly) {
+          results.innerHTML = `<div class="meta">${escapeHtml(t("noFavorites"))}</div>`;
+        } else if (!matches.length && state.todayOnly) {
+          results.innerHTML = `<div class="meta">${escapeHtml(t("noTodayItems"))}</div>`;
+        }
+        results.querySelectorAll("[data-node]").forEach((el) => {
+          el.addEventListener("click", () => showNode(nodeById.get(el.dataset.node)));
+        });
+        const clean = (query || "").trim();
+        updateSearchStatus(matches, query, Boolean(options.submitted || (clean && state.searchSubmitted === clean)));
+        return matches;
+      }
+
+      function submitSearch() {
+        state.searchSubmitted = search.value.trim();
+        const matches = renderResults(search.value, { submitted: true });
+        if (matches.length) {
+          showNode(matches[0]);
+        } else {
+          updateChrome();
+        }
+      }
+
+      function setViewFilter(filter) {
+        const hadPaperQualityFilter = state.paperQualityFilters.size > 0;
+        state.viewFilter = state.viewFilter === filter && filter !== "all" && !hadPaperQualityFilter ? "all" : filter;
+        state.paperQualityFilters.clear();
+        state.selected = null;
+        state.dragging = null;
+        if (state.localGraph && state.viewFilter !== "all") {
+          state.localGraph = false;
+          state.expandedNodeId = null;
+        }
+        showNode(null);
+      }
+
+      function togglePaperQualityFilter(filter) {
+        if (state.paperQualityFilters.has(filter)) state.paperQualityFilters.delete(filter);
+        else state.paperQualityFilters.add(filter);
+        state.viewFilter = state.paperQualityFilters.size ? "paper" : "all";
+        state.selected = null;
+        state.dragging = null;
+        if (state.localGraph && state.viewFilter !== "all") {
+          state.localGraph = false;
+          state.expandedNodeId = null;
+        }
+        showNode(null);
+      }
+
+      function toggleFavorite(node) {
+        if (!canFavorite(node)) return;
+        if (state.favorites.has(node.id)) {
+          state.favorites.delete(node.id);
+          delete state.favoriteCategories[node.id];
+        } else {
+          state.favorites.add(node.id);
+        }
+        saveFavorites();
+        saveFavoriteCategories();
+        updateChrome();
+        showNode(node);
+      }
+
+      function hideSelectedNode() {
+        if (!state.selected) {
+          window.alert(t("noNodeSelected"));
+          return;
+        }
+        if (window.confirm(t("hideConfirm"))) {
+          state.hiddenNodes.add(state.selected.id);
+          saveGraphEdits();
+          state.selected = null;
+          updateChrome();
+          showNode(null);
+          renderResults(search.value);
+        }
+      }
+
+      function restoreHiddenNode(id) {
+        state.hiddenNodes.delete(id);
+        saveGraphEdits();
+        updateChrome();
+        renderResults(search.value);
+      }
+
+      function assignFavoriteCategory() {
+        if (!state.selected || !canFavorite(state.selected)) {
+          window.alert(t("noNodeSelected"));
+          return;
+        }
+        const input = document.getElementById("favoriteCategoryInput");
+        const select = document.getElementById("favoriteCategorySelect");
+        const category = input.value.trim() || (select.value === "__new" ? "" : select.value.trim());
+        setFavoriteCategory(state.selected.id, category);
+        if (input) input.value = "";
+        updateChrome();
+        showNode(state.selected);
+        window.alert(t("categoryAssigned"));
+      }
+
+      function clearSelectedFavoriteCategory() {
+        if (!state.selected || !canFavorite(state.selected)) {
+          window.alert(t("noNodeSelected"));
+          return;
+        }
+        setFavoriteCategory(state.selected.id, "");
+        updateChrome();
+        showNode(state.selected);
+        window.alert(t("categoryCleared"));
+      }
+
+      function setFavoriteCategory(nodeId, category) {
+        const node = nodeById.get(nodeId);
+        if (!canFavorite(node)) return;
+        const clean = String(category || "").trim();
+        state.favorites.add(nodeId);
+        if (clean) state.favoriteCategories[nodeId] = clean;
+        else delete state.favoriteCategories[nodeId];
+        saveFavorites();
+        saveFavoriteCategories();
+      }
+
+      function toggleExportSelection(node) {
+        if (!canFavorite(node)) return;
+        if (state.exportSelection.has(node.id)) state.exportSelection.delete(node.id);
+        else state.exportSelection.add(node.id);
+        saveExportSelection();
+        updateChrome();
+        showNode(node);
+      }
+
+      function markdownList(title, items) {
+        const clean = (items || []).filter(Boolean);
+        if (!clean.length) return [];
+        return [`### ${title}`, "", ...clean.map((item) => `- ${item}`), ""];
+      }
+
+      function markdownField(label, value) {
+        return value ? [`- ${label}: ${value}`] : [];
+      }
+
+      function markdownForNode(node, index) {
+        const analysis = localizedAnalysis(node);
+        const category = favoriteCategory(node);
+        const figures = (node.figure_previews || []).filter((figure) => figure && figure.src);
+        const labTags = (node.lab_tags || []).map((lab) => lab.kind ? `${lab.label} · ${lab.kind}` : lab.label);
+        const venueTags = node.venue_tags || [];
+        return [
+          `## ${index + 1}. ${node.label}`,
+          "",
+          ...markdownField("ID", node.id),
+          ...markdownField("Paper ID", node.paper_id),
+          ...markdownField("Type", nodeTypeLabel(node)),
+          ...markdownField("Source", node.source),
+          ...markdownField("Category", category || ""),
+          ...markdownField("Priority", node.priority),
+          ...markdownField("Score", node.score),
+          ...markdownField("Year", node.year),
+          ...markdownField("Authors", node.authors),
+          ...markdownField("URL", node.url ? resolveUrl(node.url) : ""),
+          ...markdownField("PDF", node.pdf_url),
+          ...markdownField("Full Text", node.text_cache_path ? resolveUrl(node.text_cache_path) : ""),
+          ...markdownField("Deep Read", localizedDeepReadPath(node) ? resolveUrl(localizedDeepReadPath(node)) : ""),
+          ...markdownField("Quality", node.quality_status ? `${qualityLabel(node.quality_status)} (${node.quality_score || 0})` : ""),
+          ...markdownField("Evidence", node.evidence_count !== undefined ? `${node.evidence_count}/${node.min_evidence || 4}` : ""),
+          ...markdownField("Figure Verified", node.figure_verified === undefined ? "" : String(Boolean(node.figure_verified))),
+          "",
+          ...markdownList(t("topSignals"), [...venueTags, ...labTags]),
+          ...(analysis.one_line || node.abstract ? [`### ${t("summary")}`, "", analysis.one_line || node.abstract, ""] : []),
+          ...markdownList(t("evidenceItems"), analysis.evidence_items || []),
+          ...markdownList(t("verifiedFigureNotes"), (analysis.verified_figures || []).length ? analysis.verified_figures : (analysis.figure_notes || [])),
+          ...markdownList(t("innovations"), analysis.innovations || []),
+          ...markdownList(t("relevance"), analysis.relevance || []),
+          ...markdownList(t("mechanisms"), analysis.mechanisms || []),
+          ...markdownList(t("limitations"), analysis.limitations || []),
+          ...markdownList(t("readingQuestions"), analysis.questions || []),
+          ...markdownList(t("importantFigures"), figures.map((figure) => `${figure.caption || `page ${figure.page || ""}`}: ${resolveAssetUrl(figure.src)}`)),
+          node.raw_abstract ? ["### Raw Abstract", "", node.raw_abstract, ""] : [],
+        ].flat().filter((line) => line !== null && line !== undefined && line !== false);
+      }
+
+      function exportSelectedPapers() {
+        let selectedNodes = [...state.exportSelection].map((id) => nodeById.get(id)).filter((node) => node && canFavorite(node));
+        if (!selectedNodes.length && canFavorite(state.selected)) selectedNodes = [state.selected];
+        if (!selectedNodes.length) {
+          window.alert(t("exportSelectedEmpty"));
+          return;
+        }
+        exportPaperSummary(selectedNodes, t("exportedSummaryTitle"), "paper-brain-selected-summary");
+      }
+
+      function exportTodayPapers() {
+        const todayNodes = state.nodes
+          .filter((node) => canFavorite(node) && isTodayNode(node) && !isHiddenNode(node))
+          .sort((a, b) => (b.score || 0) - (a.score || 0));
+        if (!todayNodes.length) {
+          window.alert(t("exportTodayEmpty"));
+          return;
+        }
+        exportPaperSummary(todayNodes, t("exportedTodayTitle"), "paper-brain-today-added-summary");
+      }
+
+      function clearExportSelection() {
+        if (!state.exportSelection.size) return;
+        state.exportSelection.clear();
+        saveExportSelection();
+        updateChrome();
+        if (state.selected) showNode(state.selected);
+        window.alert(t("exportSelectionCleared"));
+      }
+
+      function exportPaperSummary(nodes, title, basename) {
+        const lines = [
+          `# ${title}`,
+          "",
+          `- Generated at: ${new Date().toISOString()}`,
+          `- Count: ${nodes.length}`,
+          "",
+          ...nodes.flatMap((node, index) => markdownForNode(node, index)),
+        ];
+        const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${basename}-${new Date().toISOString().slice(0, 10)}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function renderHiddenNodesPanel() {
+        const list = document.getElementById("hiddenNodesList");
+        if (!list) return;
+        const hidden = [...state.hiddenNodes]
+          .map((id) => nodeById.get(id) || { id, label: id, kind: "unknown" })
+          .sort((a, b) => String(a.label || a.id).localeCompare(String(b.label || b.id)));
+        if (!hidden.length) {
+          list.innerHTML = `<div class="compact-meta">${escapeHtml(t("hiddenEmpty"))}</div>`;
+          return;
+        }
+        list.innerHTML = hidden.map((node) => `
+          <div class="compact-row">
+            <div>
+              <div class="compact-title">${escapeHtml(node.label || node.id)}</div>
+              <div class="compact-meta">${escapeHtml(nodeTypeLabel(node))}</div>
+            </div>
+            <button class="tiny-button" type="button" data-restore-node="${escapeAttr(node.id)}">${escapeHtml(t("restoreNode"))}</button>
+          </div>
+        `).join("");
+        list.querySelectorAll("[data-restore-node]").forEach((button) => {
+          button.addEventListener("click", () => restoreHiddenNode(button.dataset.restoreNode));
+        });
+      }
+
+      function categoryKeyForNode(node) {
+        return favoriteCategory(node) || "__uncategorized";
+      }
+
+      function categoryLabel(key) {
+        return key === "__uncategorized" ? t("uncategorized") : key;
+      }
+
+      function renderFavoritesPanel() {
+        let cleanedSelection = false;
+        [...state.exportSelection].forEach((id) => {
+          const node = nodeById.get(id);
+          if (!node || !canFavorite(node)) {
+            state.exportSelection.delete(id);
+            cleanedSelection = true;
+          }
+        });
+        if (cleanedSelection) saveExportSelection();
+        const input = document.getElementById("favoriteCategoryInput");
+        const categorySelect = document.getElementById("favoriteCategorySelect");
+        const assignButton = document.getElementById("assignFavoriteCategoryBtn");
+        const clearCategoryButton = document.getElementById("clearFavoriteCategoryBtn");
+        const select = document.getElementById("favoriteCategoryFilter");
+        const list = document.getElementById("favoriteCategoryList");
+        const status = document.getElementById("exportSelectionStatus");
+        const exportButton = document.getElementById("exportSelectedBtn");
+        const exportTodayButton = document.getElementById("exportTodayBtn");
+        const clearExportButton = document.getElementById("clearExportSelectionBtn");
+        const categories = favoriteCategoryNames();
+        const selectedCategory = state.selected && canFavorite(state.selected) ? favoriteCategory(state.selected) : "";
+        if (categorySelect) {
+          categorySelect.innerHTML = [
+            `<option value="">${escapeHtml(t("uncategorized"))}</option>`,
+            ...categories.map((category) => `<option value="${escapeAttr(category)}">${escapeHtml(category)}</option>`),
+          ].join("");
+          categorySelect.value = categories.includes(selectedCategory) ? selectedCategory : "";
+        }
+        if (input) {
+          input.placeholder = t("newFavoriteCategory");
+          if (document.activeElement !== input) {
+            input.value = "";
+          }
+        }
+        if (assignButton) assignButton.textContent = t("classifyFavorite");
+        if (clearCategoryButton) clearCategoryButton.textContent = t("clearFavoriteCategory");
+        if (status) status.textContent = t("exportSelectionStatus", state.exportSelection.size);
+        if (exportButton) exportButton.textContent = t("exportSelected");
+        if (exportTodayButton) exportTodayButton.textContent = t("exportToday");
+        if (clearExportButton) clearExportButton.textContent = t("clearExportSelection");
+        if (select) {
+          const valid = state.favoriteCategoryFilter === "all" || state.favoriteCategoryFilter === "__uncategorized" || categories.includes(state.favoriteCategoryFilter);
+          if (!valid) state.favoriteCategoryFilter = "all";
+          select.innerHTML = [
+            `<option value="all">${escapeHtml(t("allCategories"))}</option>`,
+            `<option value="__uncategorized">${escapeHtml(t("uncategorized"))}</option>`,
+            ...categories.map((category) => `<option value="${escapeAttr(category)}">${escapeHtml(category)}</option>`),
+          ].join("");
+          select.value = state.favoriteCategoryFilter;
+        }
+        if (!list) return;
+        const favoriteNodes = [...state.favorites]
+          .map((id) => nodeById.get(id))
+          .filter((node) => node && canFavorite(node))
+          .sort((a, b) => {
+            const byCategory = categoryLabel(categoryKeyForNode(a)).localeCompare(categoryLabel(categoryKeyForNode(b)));
+            return byCategory || String(a.label || "").localeCompare(String(b.label || ""));
+          });
+        if (!favoriteNodes.length) {
+          list.innerHTML = `<div class="compact-meta">${escapeHtml(t("noFavorites"))}</div>`;
+          return;
+        }
+        const groups = new Map();
+        favoriteNodes.forEach((node) => {
+          const key = categoryKeyForNode(node);
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(node);
+        });
+        const groupKeys = [...groups.keys()].sort((a, b) => {
+          if (a === "__uncategorized") return 1;
+          if (b === "__uncategorized") return -1;
+          return categoryLabel(a).localeCompare(categoryLabel(b));
+        });
+        list.innerHTML = groupKeys.map((key) => {
+          const nodes = groups.get(key);
+          const items = nodes.map((node) => `
+            <div class="favorite-paper-row">
+              <button class="favorite-paper-link" type="button" data-node="${escapeAttr(node.id)}">
+                ${escapeHtml(isExportSelectedNode(node) ? "✓ " : "")}${escapeHtml(node.label)}
+              </button>
+              <select data-move-category="${escapeAttr(node.id)}" aria-label="${escapeAttr(t("changeCategory"))}">
+                <option value="">${escapeHtml(t("uncategorized"))}</option>
+                ${categories.map((category) => `<option value="${escapeAttr(category)}" ${favoriteCategory(node) === category ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
+              </select>
+            </div>
+          `).join("");
+          return `
+            <div class="favorite-category-block">
+              <button class="favorite-category-head ${state.favoriteCategoryFilter === key ? "category-active" : ""}" type="button" data-category-filter="${escapeAttr(key)}">
+                <span class="compact-title">${escapeHtml(categoryLabel(key))}</span>
+                <span class="compact-meta">${escapeHtml(String(nodes.length))}</span>
+              </button>
+              <div class="favorite-category-items">${items}</div>
+            </div>
+          `;
+        }).join("");
+        list.querySelectorAll("[data-category-filter]").forEach((button) => {
+          button.addEventListener("click", () => {
+            state.favoriteCategoryFilter = state.favoriteCategoryFilter === button.dataset.categoryFilter ? "all" : button.dataset.categoryFilter;
+            state.favoritesOnly = true;
+            state.todayOnly = false;
+            updateChrome();
+            showNode(null);
+          });
+        });
+        list.querySelectorAll("[data-node]").forEach((button) => {
+          button.addEventListener("click", () => showNode(nodeById.get(button.dataset.node)));
+        });
+        list.querySelectorAll("[data-move-category]").forEach((selectEl) => {
+          selectEl.addEventListener("change", (event) => {
+            event.stopPropagation();
+            setFavoriteCategory(selectEl.dataset.moveCategory, selectEl.value);
+            updateChrome();
+            if (state.selected) showNode(state.selected);
+          });
+        });
+      }
+
+      function updateChrome() {
+        document.documentElement.lang = state.lang === "zh" ? "zh-CN" : "en";
+        document.title = state.title || t("appTitle");
+        appTitleInput.value = state.title || t("appTitle");
+        document.getElementById("generated").textContent = t("generated", graph.project, graph.generated_at);
+        document.getElementById("langBtn").textContent = t("langButton");
+        document.getElementById("favoritesBtn").textContent = state.favoritesOnly ? t("favoritesOnlyButton") : t("favoritesButton");
+        document.getElementById("todayBtn").textContent = state.todayOnly ? t("todayOnlyButton") : t("todayButton");
+        document.getElementById("localGraphBtn").textContent = state.localGraph ? t("globalGraphButton") : t("localGraphButton");
+        const layer = currentLayerMode();
+        const layerNames = {
+          auto: t("layerAuto"),
+          domain: t("layerDomain"),
+          topic: t("layerTopic"),
+          detail: t("layerDetail"),
+        };
+        document.getElementById("topicDepthBtn").textContent = `${t("expandTopicsButton")} · ${state.layerMode === "auto" ? layerNames.auto : layerNames[state.layerMode]}`;
+        document.getElementById("resetBtn").textContent = t("resetButton");
+        document.getElementById("focusBtn").textContent = t("projectButton");
+        document.getElementById("search").placeholder = t("searchPlaceholder");
+        document.getElementById("searchBtn").textContent = t("searchButton");
+        document.getElementById("layerReadout").textContent = `${t("layerReadout")}: ${layerNames[layer]}`;
+        const viewFilter = document.getElementById("viewFilter");
+        const optionLabels = [
+          t("allNodes"),
+          t("project"),
+          t("papersOnly"),
+          t("localPdfs"),
+          t("codeRepos"),
+          t("domainsOnly"),
+          t("topicsOnly"),
+          t("seed"),
+          t("deepRead"),
+          t("needsReview"),
+        ];
+        [...viewFilter.options].forEach((option, index) => {
+          option.textContent = optionLabels[index];
+        });
+        viewFilter.value = [...viewFilter.options].some((option) => option.value === state.viewFilter) ? state.viewFilter : "all";
+        document.getElementById("actionsSummary").textContent = t("actions");
+        document.getElementById("hideNodeBtn").textContent = t("hideNode");
+        document.getElementById("hiddenNodesTitle").textContent = t("hiddenNodes");
+        document.getElementById("favoritesSummary").textContent = t("favoritesPanel");
+        const statLabels = document.querySelectorAll(".stat span");
+        [t("papers"), t("codeRepoStats"), t("domains"), t("topics"), t("edges"), t("favorites")].forEach((label, index) => {
+          if (statLabels[index]) statLabels[index].textContent = label;
+        });
+        const legendLabels = {
+          all: t("allNodes"),
+          project: t("project"),
+          paper: t("paper"),
+          local_pdf: t("localPdf"),
+          code_repo: t("codeRepo"),
+          domain: t("domain"),
+          topics: t("topic"),
+          seed: t("seed"),
+        };
+        document.querySelectorAll(".legend .chip[data-filter]").forEach((chip) => {
+          const filter = chip.dataset.filter || "all";
+          const active = state.viewFilter === filter || (state.viewFilter === "papers" && filter === "paper");
+          chip.classList.toggle("legend-active", active);
+          chip.classList.toggle("legend-muted", state.viewFilter !== "all" && !active);
+          const label = legendLabels[filter] || filter;
+          const text = chip.querySelector("span:last-child");
+          if (text) text.textContent = label;
+        });
+        const paperGroup = document.getElementById("paperLegendGroup");
+        if (paperGroup) {
+          paperGroup.classList.toggle("paper-group-active", state.viewFilter === "paper" || state.viewFilter === "papers" || state.paperQualityFilters.size > 0);
+          paperGroup.classList.toggle("legend-muted", state.viewFilter !== "all" && state.viewFilter !== "paper" && state.viewFilter !== "papers");
+        }
+        const qualityLabels = {
+          deep_read: t("deepRead"),
+          needs_review: t("needsReview"),
+        };
+        document.querySelectorAll(".paper-quality-option[data-quality-filter]").forEach((option) => {
+          const filter = option.dataset.qualityFilter;
+          const checked = state.paperQualityFilters.has(filter);
+          const input = option.querySelector("input");
+          const text = option.querySelector("span");
+          option.classList.toggle("quality-active", checked);
+          option.classList.toggle("quality-muted", state.paperQualityFilters.size > 0 && !checked);
+          if (input) input.checked = checked;
+          if (text) text.textContent = qualityLabels[filter] || filter;
+        });
+        const visibleNodes = state.nodes.filter(isVisibleNode);
+        document.getElementById("paperCount").textContent = visibleNodes.filter((n) => nodeType(n) === "paper" || nodeType(n) === "seed").length;
+        document.getElementById("repoCount").textContent = visibleNodes.filter((n) => nodeType(n) === "code_repo").length;
+        document.getElementById("domainCount").textContent = visibleNodes.filter((n) => nodeType(n) === "domain").length;
+        document.getElementById("topicCount").textContent = visibleNodes.filter((n) => nodeType(n) === "topic").length;
+        document.getElementById("edgeCount").textContent = state.edges.filter((edge) => isVisibleNode(edge.sourceNode) && isVisibleNode(edge.targetNode)).length;
+        document.getElementById("favoriteCount").textContent = state.favorites.size;
+        document.getElementById("favoritesBtn").classList.toggle("top-filter-active", state.favoritesOnly);
+        document.getElementById("todayBtn").classList.toggle("top-filter-active", state.todayOnly);
+        document.getElementById("todayBtn").classList.toggle("today-active", state.todayOnly);
+        document.getElementById("localGraphBtn").classList.toggle("top-filter-active", state.localGraph);
+        renderHiddenNodesPanel();
+        renderFavoritesPanel();
+      }
+
+      function escapeHtml(value) {
+        return String(value || "").replace(/[&<>"']/g, (ch) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[ch]);
+      }
+
+      function escapeAttr(value) {
+        return escapeHtml(value).replace(/"/g, "&quot;");
+      }
+
+      function resolveUrl(value) {
+        const url = String(value || "");
+        if (url.startsWith("doc/")) return "../" + url.slice(4);
+        if (url.startsWith("scripts/") || url.startsWith("config/")) return "../../" + url;
+        return url;
+      }
+
+      function resolveAssetUrl(value) {
+        const url = String(value || "");
+        if (url.startsWith("doc/paper_brain/")) return url.slice("doc/paper_brain/".length);
+        return resolveUrl(url);
+      }
+
+      canvas.addEventListener("mousemove", (event) => {
+        state.hovered = pickNode(event);
+        if (state.dragging) {
+          const p = toGraphPoint(event);
+          const rect = canvas.getBoundingClientRect();
+          const cx = rect.width / 2;
+          const cy = rect.height / 2;
+          const depth = state.dragging.depthScale || 1;
+          state.dragging.x = cx + (p.x - cx) / depth;
+          state.dragging.y = cy + (p.y - cy - (state.dragging.z || 0) * 0.12) / (state.spaceTilt * depth);
+          state.dragging.vx = 0;
+          state.dragging.vy = 0;
+          state.dragging.vz = 0;
+        }
+        canvas.style.cursor = state.dragging ? "grabbing" : state.hovered ? "pointer" : "default";
+      });
+      canvas.addEventListener("mousedown", (event) => {
+        const node = pickNode(event);
+        if (node) {
+          state.dragging = node;
+          showNode(node);
+        } else {
+          state.dragging = null;
+          showNode(null);
+        }
+      });
+      window.addEventListener("mouseup", () => {
+        state.dragging = null;
+      });
+      canvas.addEventListener("dblclick", (event) => {
+        const node = pickNode(event);
+        if (node && node.url) window.open(resolveUrl(node.url), "_blank", "noreferrer");
+      });
+      canvas.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        const delta = event.deltaY > 0 ? 0.9 : 1.1;
+        state.scale = Math.min(2.4, Math.max(0.45, state.scale * delta));
+        updateChrome();
+        renderResults(search.value);
+      });
+      appTitleInput.addEventListener("blur", saveTitle);
+      appTitleInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          saveTitle();
+          appTitleInput.blur();
+        }
+      });
+      search.addEventListener("input", () => {
+        state.searchSubmitted = "";
+        renderResults(search.value);
+      });
+      search.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          submitSearch();
+        }
+      });
+      document.getElementById("searchBtn").addEventListener("click", submitSearch);
+      document.getElementById("viewFilter").addEventListener("change", (event) => {
+        state.viewFilter = event.target.value;
+        state.paperQualityFilters.clear();
+        state.selected = null;
+        showNode(null);
+      });
+      document.querySelectorAll(".legend .chip[data-filter]").forEach((chip) => {
+        chip.addEventListener("click", () => setViewFilter(chip.dataset.filter || "all"));
+      });
+      document.querySelectorAll(".paper-quality-option[data-quality-filter]").forEach((option) => {
+        option.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          togglePaperQualityFilter(option.dataset.qualityFilter);
+        });
+      });
+      document.getElementById("langBtn").addEventListener("click", () => {
+        state.lang = state.lang === "zh" ? "en" : "zh";
+        localStorage.setItem(storageKeys.lang, state.lang);
+        updateChrome();
+        showNode(state.selected);
+      });
+      document.getElementById("favoritesBtn").addEventListener("click", () => {
+        state.favoritesOnly = !state.favoritesOnly;
+        if (state.favoritesOnly) state.todayOnly = false;
+        state.selected = null;
+        updateChrome();
+        showNode(null);
+      });
+      document.getElementById("todayBtn").addEventListener("click", () => {
+        state.todayOnly = !state.todayOnly;
+        if (state.todayOnly) state.favoritesOnly = false;
+        state.selected = null;
+        updateChrome();
+        showNode(null);
+      });
+      document.getElementById("localGraphBtn").addEventListener("click", () => {
+        state.localGraph = !state.localGraph;
+        if (state.localGraph && !state.selected) {
+          state.selected = projectNode();
+        }
+        state.expandedNodeId = state.localGraph && state.selected ? state.selected.id : null;
+        updateChrome();
+        showNode(state.selected);
+      });
+      document.getElementById("topicDepthBtn").addEventListener("click", () => {
+        const modes = ["auto", "domain", "topic", "detail"];
+        state.layerMode = modes[(modes.indexOf(state.layerMode) + 1) % modes.length];
+        state.expandedNodeId = null;
+        state.localGraph = false;
+        saveLayerMode();
+        updateChrome();
+        renderResults(search.value);
+      });
+      document.getElementById("hideNodeBtn").addEventListener("click", hideSelectedNode);
+      document.getElementById("assignFavoriteCategoryBtn").addEventListener("click", assignFavoriteCategory);
+      document.getElementById("clearFavoriteCategoryBtn").addEventListener("click", clearSelectedFavoriteCategory);
+      document.getElementById("favoriteCategoryInput").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          assignFavoriteCategory();
+        }
+      });
+      document.getElementById("favoriteCategoryFilter").addEventListener("change", (event) => {
+        state.favoriteCategoryFilter = event.target.value || "all";
+        state.favoritesOnly = state.favoriteCategoryFilter !== "all";
+        if (state.favoritesOnly) state.todayOnly = false;
+        updateChrome();
+        showNode(null);
+      });
+      document.getElementById("exportSelectedBtn").addEventListener("click", exportSelectedPapers);
+      document.getElementById("exportTodayBtn").addEventListener("click", exportTodayPapers);
+      document.getElementById("clearExportSelectionBtn").addEventListener("click", clearExportSelection);
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        state.selected = null;
+        state.favoritesOnly = false;
+        state.todayOnly = false;
+        state.localGraph = false;
+        state.viewFilter = "all";
+        state.paperQualityFilters.clear();
+        state.layerMode = "auto";
+        state.expandedNodeId = null;
+        state.searchSubmitted = "";
+        search.value = "";
+        saveLayerMode();
+        state.scale = 1;
+        state.offsetX = 0;
+        state.offsetY = 0;
+        showNode(null);
+      });
+      document.getElementById("focusBtn").addEventListener("click", () => {
+        showNode(projectNode());
+      });
+
+      resize();
+      initLayout();
+      updateChrome();
+      renderResults("");
+      showNode(projectNode());
+      animate();
+      window.addEventListener("resize", () => {
+        resize();
+        initLayout();
+      });
+    </script>
+  </body>
+</html>
